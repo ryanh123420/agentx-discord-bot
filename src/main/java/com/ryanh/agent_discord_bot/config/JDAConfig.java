@@ -36,7 +36,8 @@ public class JDAConfig {
                 .updateCommands()
                 .addCommands(
                         Commands.slash("register", "Register with BattleTag")
-                                .addOption(OptionType.STRING, "battletag", "Enter BattleTag", true)
+                                .addOption(OptionType.STRING, "battletag", "Enter BattleTag", true),
+                        Commands.slash("unregister", "Un-register a BattleTag")
         ).queue();
 
         return jda;

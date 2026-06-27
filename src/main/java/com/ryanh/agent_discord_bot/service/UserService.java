@@ -57,4 +57,14 @@ public class UserService {
 
         return builder.toString();
     }
+
+    public boolean checkIfRegistered(String discordId) {
+        return userRepository.findByDiscordId(discordId).isPresent();
+    }
+
+    public String removeUser(String discordId) {
+        Optional<User> user = userRepository.findByDiscordId(discordId);
+        userRepository.delete(user.get());
+        return "BattleTag and characters have been unregistered.";
+    }
 }
