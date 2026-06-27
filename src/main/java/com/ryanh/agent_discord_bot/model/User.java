@@ -2,9 +2,8 @@ package com.ryanh.agent_discord_bot.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.data.relational.core.sql.In;
 
-import java.util.Objects;
+import java.util.List;
 
 @Entity
 @Table(name="users")
@@ -12,11 +11,17 @@ public class User {
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         private Integer id;
+
+        @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+        private List<RaidCharacter> characters;
+
         @NotBlank
         private String battleTag;
+
         @NotBlank
         @Column(unique = true)
         private String discordId;
+
 
         public User() {}
 

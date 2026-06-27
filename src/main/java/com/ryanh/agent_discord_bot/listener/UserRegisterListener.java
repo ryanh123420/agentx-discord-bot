@@ -23,14 +23,8 @@ public class UserRegisterListener extends ListenerAdapter {
             String discordId = event.getUser().getId();
             String input = event.getOption("battletag").getAsString();
 
-            try {
-                userService.insertUser(input, discordId);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-            event.reply("BattleTag registered: " + input).queue();
-
+            String response = userService.insertUser(input, discordId);
+            event.reply(response).setEphemeral(true).queue();
         }
     }
 }
