@@ -7,7 +7,6 @@ import com.ryanh.agent_discord_bot.repository.RaidCharacterRepository;
 import com.ryanh.agent_discord_bot.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
