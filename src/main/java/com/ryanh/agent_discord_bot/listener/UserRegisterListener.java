@@ -23,6 +23,11 @@ public class UserRegisterListener extends ListenerAdapter {
             String discordId = event.getUser().getId();
             String input = event.getOption("battletag").getAsString();
 
+            if(!input.matches(".+#\\d+")) {
+                event.reply("Invalid BattleTag format, double check formatting follows: Name#1234")
+                        .setEphemeral(true).queue();
+            }
+
             String response = userService.insertUser(input, discordId);
             event.reply(response).setEphemeral(true).queue();
         }

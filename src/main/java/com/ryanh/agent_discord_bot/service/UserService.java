@@ -25,15 +25,23 @@ public class UserService {
     }
 
     public String insertUser(String battleTag, String discordId) {
+        if(userRepository.findByDiscordId(discordId).isPresent()) {
+            return "You are already registered! Use /unregister if you need to setup a different BattleTag.";
+        }
+        if(userRepository.findByBattleTag(battleTag).isPresent()) {
+            return "This BattleTag is already registered to a different user.";
+        }
+
         WowUtilsRoster roster = wowUtilsClient.getRoster();
 
         Optional<WowUtilsRoster.Member> match = roster.members()
                 .stream()
+                .filter(m -> m.battletag() != null)
                 .filter(m -> m.battletag().equalsIgnoreCase(battleTag))
                 .findFirst();
 
         if(match.isEmpty()) {
-            return "BattleTag not found on WoWUtils";
+            return "BattleTag not found on WoWUtils.";
         }
 
         User user = new User();

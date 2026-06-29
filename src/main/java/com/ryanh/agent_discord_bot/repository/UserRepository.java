@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User,Integer> {
 
     Optional<User> findByDiscordId(String discordId);
+    Optional<User> findByBattleTag(String battletag);
 }
