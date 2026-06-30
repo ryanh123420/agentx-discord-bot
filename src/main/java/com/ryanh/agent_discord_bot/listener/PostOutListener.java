@@ -3,11 +3,16 @@ package com.ryanh.agent_discord_bot.listener;
 import com.ryanh.agent_discord_bot.service.PostOutService;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
+import net.dv8tion.jda.api.components.textinput.TextInput;
+import net.dv8tion.jda.api.components.textinput.TextInputStyle;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
@@ -32,7 +37,7 @@ public class PostOutListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if(event.getName().equals("postout")) {
-            LocalDate tuesdayReset = getReset();
+            LocalDate reset = getReset();
 
             event.reply("When do you need to post out?")
                     .addComponents(
@@ -40,8 +45,8 @@ public class PostOutListener extends ListenerAdapter {
                                     StringSelectMenu.create("reset")
                                     .addOption("This Reset", "currentReset",
                                             "Week of "
-                                            + tuesdayReset.getMonthValue() + "/"
-                                            + tuesdayReset.getDayOfMonth())
+                                            + reset.getMonthValue() + "/"
+                                            + reset.getDayOfMonth())
                                     .addOption("Future Date", "futureReset",
                                             "After this reset at a later date.")
                                     .build()),
@@ -91,11 +96,16 @@ public class PostOutListener extends ListenerAdapter {
                         ).queue();
             }
             else if (selected.equals("futureReset")) {
+                TextInput dateInput = TextInput.create("dateinput", TextInputStyle.SHORT)
+                        .setPlaceholder("Example format: 4/20, 6/7, 6/9")
+                        .setRequired(true)
+                        .build();
 
-                //placeholder reply
-                event.editMessage("You posted out for a future reset!!!")
-                        .setComponents()
-                        .queue();
+                Modal modal = Modal.create("postout-modal", "Post Out")
+                        .addComponents(Label.of("Enter month/day, separated by commas", dateInput))
+                        .build();
+
+                event.replyModal(modal).queue();
             }
 
         }
@@ -114,11 +124,22 @@ public class PostOutListener extends ListenerAdapter {
                     .setComponents().queue();
         }
         else if(event.getComponentId().equals("postout-confirm")) {
-
-            //placeholder reply
+            List<String> confirmedDays = daySelections.remove(event.getUser().getId());
             event.editMessage("Post out created!!!")
                     .setComponents()
                     .queue();
+        }
+    }
+
+    @Override
+    public void onModalInteraction(ModalInteractionEvent event) {
+        if(event.getModalId().equals("postout-modal")) {
+            String dateInput = event.getValue("dateinput").getAsString();
+
+            //Call PostOutService with the dates
+
+            //placeholder
+            event.reply("You did it!").setEphemeral(true).queue();
         }
     }
 
