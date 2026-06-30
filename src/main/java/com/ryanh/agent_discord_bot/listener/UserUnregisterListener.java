@@ -22,8 +22,8 @@ public class UserUnregisterListener extends ListenerAdapter {
             if(userService.checkIfRegistered(event.getUser().getId())) {
                 event.reply("Are you sure you want to unregister your BattleTag?")
                         .addComponents(ActionRow.of(
-                                Button.primary("confirm","Confirm"),
-                                Button.danger("cancel", "Cancel")))
+                                Button.primary("unregister-confirm","Confirm"),
+                                Button.danger("unregister-cancel", "Cancel")))
                         .setEphemeral(true)
                         .queue();
             }
@@ -35,12 +35,13 @@ public class UserUnregisterListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
-        if(event.getComponentId().equals("confirm")) {
+        if(event.getComponentId().equals("unregister-confirm")) {
             String response = userService.removeUser(event.getUser().getId());
             event.reply(response).setEphemeral(true).queue();
         }
-        else if(event.getComponentId().equals("cancel")) {
-            event.reply("Cancelled").setEphemeral(true).queue();
+        else if(event.getComponentId().equals("unregister-cancel")) {
+            event.reply("BattleTag registration cancelled")
+                    .setEphemeral(true).queue();
         }
     }
 }

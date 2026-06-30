@@ -2,8 +2,10 @@ package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.service.PostOutService;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.springframework.stereotype.Component;
@@ -13,11 +15,15 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class PostOutListener extends ListenerAdapter {
 
     private final PostOutService postOutService;
+    private final Map<String, List<String>> daySelections = new HashMap<>();
 
     public PostOutListener(PostOutService postOutService) {
         this.postOutService = postOutService;
@@ -29,15 +35,20 @@ public class PostOutListener extends ListenerAdapter {
             LocalDate tuesdayReset = getReset();
 
             event.reply("When do you need to post out?")
-                    .addComponents(ActionRow.of(
-                            StringSelectMenu.create("reset")
+                    .addComponents(
+                            ActionRow.of(
+                                    StringSelectMenu.create("reset")
                                     .addOption("This Reset", "currentReset",
                                             "Week of "
                                             + tuesdayReset.getMonthValue() + "/"
                                             + tuesdayReset.getDayOfMonth())
                                     .addOption("Future Date", "futureReset",
                                             "After this reset at a later date.")
-                                    .build()))
+                                    .build()),
+                            ActionRow.of(
+                                    Button.danger("postout-cancel", "Cancel")
+                            )
+                    )
                     .setEphemeral(true)
                     .queue();
         }
@@ -48,16 +59,68 @@ public class PostOutListener extends ListenerAdapter {
         if(event.getComponentId().equals("reset")) {
             String selected = event.getValues().getFirst();
             if(selected.equals("currentReset")) {
-                //placeholder reply
-                event.reply("You posted out for this reset!!!").setEphemeral(true).queue();
+                StringSelectMenu.Builder menu = StringSelectMenu.create("postoutdays")
+                        .setMinValues(1);
+                LocalDate reset = getReset();
+
+                if(!isRaidDayPassed(DayOfWeek.TUESDAY)) {
+                    menu.addOption("Tuesday", "tuesday",
+                            reset.getMonthValue() + "/" + reset.getDayOfMonth());
+                }
+                if(!isRaidDayPassed(DayOfWeek.WEDNESDAY)) {
+                    menu.addOption("Wednesday", "wednesday",
+                            reset.plusDays(1).getMonthValue()
+                                    + "/" + reset.plusDays(1).getDayOfMonth());
+                }
+                if(!isRaidDayPassed(DayOfWeek.THURSDAY)) {
+                    menu.addOption("Thursday", "thursday",
+                            reset.plusDays(2).getMonthValue()
+                                    + "/" + reset.plusDays(2).getDayOfMonth());
+                }
+                menu.setMaxValues(menu.getOptions().size());
+
+                event.editMessage("Select which days:")
+                        .setComponents(
+                                ActionRow.of(
+                                        menu.build()
+                                ),
+                                ActionRow.of(
+                                        Button.primary("postout-confirm", "Confirm"),
+                                        Button.danger("postout-cancel", "Cancel")
+                                )
+                        ).queue();
             }
             else if (selected.equals("futureReset")) {
+
                 //placeholder reply
-                event.reply("You posted out for a future reset!!!").setEphemeral(true).queue();
+                event.editMessage("You posted out for a future reset!!!")
+                        .setComponents()
+                        .queue();
             }
+
         }
+        else if (event.getComponentId().equals("postoutdays")) {
+            daySelections.put(event.getUser().getId(), event.getValues());
+            event.deferEdit().queue();
+        }
+
     }
 
+    @Override
+    public void onButtonInteraction(ButtonInteractionEvent event) {
+        if(event.getComponentId().equals("postout-cancel")) {
+            daySelections.remove(event.getUser().getId());
+            event.editMessage("Post out cancelled.")
+                    .setComponents().queue();
+        }
+        else if(event.getComponentId().equals("postout-confirm")) {
+
+            //placeholder reply
+            event.editMessage("Post out created!!!")
+                    .setComponents()
+                    .queue();
+        }
+    }
 
     public LocalDate getReset() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
@@ -70,5 +133,18 @@ public class PostOutListener extends ListenerAdapter {
         }
 
         return  now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.TUESDAY));
+    }
+
+    public boolean isRaidDayPassed(DayOfWeek raidDay) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
+        DayOfWeek today = now.getDayOfWeek();
+
+        if(today.getValue() > raidDay.getValue()) {
+            return true;
+        }
+        if(today == raidDay && now.getHour() >= 21) {
+            return true;
+        }
+        return false;
     }
 }
