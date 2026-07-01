@@ -37,7 +37,7 @@ public class PostOutListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if(event.getName().equals("postout")) {
-            LocalDate reset = getReset();
+            LocalDate reset = postOutService.getReset();
 
             event.reply("When do you need to post out?")
                     .addComponents(
@@ -66,18 +66,18 @@ public class PostOutListener extends ListenerAdapter {
             if(selected.equals("currentReset")) {
                 StringSelectMenu.Builder menu = StringSelectMenu.create("postoutdays")
                         .setMinValues(1);
-                LocalDate reset = getReset();
+                LocalDate reset = postOutService.getReset();
 
-                if(!isRaidDayPassed(DayOfWeek.TUESDAY)) {
+                if(!postOutService.isRaidDayPassed(DayOfWeek.TUESDAY)) {
                     menu.addOption("Tuesday", "tuesday",
                             reset.getMonthValue() + "/" + reset.getDayOfMonth());
                 }
-                if(!isRaidDayPassed(DayOfWeek.WEDNESDAY)) {
+                if(!postOutService.isRaidDayPassed(DayOfWeek.WEDNESDAY)) {
                     menu.addOption("Wednesday", "wednesday",
                             reset.plusDays(1).getMonthValue()
                                     + "/" + reset.plusDays(1).getDayOfMonth());
                 }
-                if(!isRaidDayPassed(DayOfWeek.THURSDAY)) {
+                if(!postOutService.isRaidDayPassed(DayOfWeek.THURSDAY)) {
                     menu.addOption("Thursday", "thursday",
                             reset.plusDays(2).getMonthValue()
                                     + "/" + reset.plusDays(2).getDayOfMonth());
@@ -143,29 +143,5 @@ public class PostOutListener extends ListenerAdapter {
         }
     }
 
-    public LocalDate getReset() {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
-        if(now.getDayOfWeek() == DayOfWeek.THURSDAY && now.getHour() >= 21) {
-            now = now.plusWeeks(1);
-        }
-        else if(now.getDayOfWeek().getValue() > DayOfWeek.THURSDAY.getValue()
-                || now.getDayOfWeek().getValue() < DayOfWeek.TUESDAY.getValue()) {
-            now = now.plusWeeks(1);
-        }
 
-        return  now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.TUESDAY));
-    }
-
-    public boolean isRaidDayPassed(DayOfWeek raidDay) {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
-        DayOfWeek today = now.getDayOfWeek();
-
-        if(today.getValue() > raidDay.getValue()) {
-            return true;
-        }
-        if(today == raidDay && now.getHour() >= 21) {
-            return true;
-        }
-        return false;
-    }
 }

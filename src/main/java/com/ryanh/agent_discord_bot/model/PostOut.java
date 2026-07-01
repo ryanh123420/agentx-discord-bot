@@ -15,12 +15,11 @@ public class PostOut {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @NotBlank
+    private String discordId;
 
     @Future
-    private LocalDate date;
+    private LocalDate postDate;
 
     @NotBlank
     private LocalDateTime datePosted;
@@ -28,6 +27,47 @@ public class PostOut {
     @NotBlank
     private LocalDateTime dateUpdated;
 
-    private DayOfWeek day;
+    public PostOut() {
+    }
+
+    public PostOut(String discordId, LocalDate postDate, LocalDateTime datePosted, LocalDateTime dateUpdated) {
+        this.discordId = discordId;
+        this.postDate = postDate;
+        this.datePosted = datePosted;
+        this.dateUpdated = dateUpdated;
+    }
+
+    public String getDiscordId() {
+        return discordId;
+    }
+
+    public void setDiscordId(String discordId) {
+        this.discordId = discordId;
+    }
+
+    public LocalDate getPostDate() {
+        return postDate;
+    }
+
+    public void setPostDate(LocalDate postDate) {
+        this.postDate = postDate;
+    }
+
+    public LocalDateTime getDatePosted() {
+        return datePosted;
+    }
+
+    public void setDatePosted(LocalDateTime datePosted) {
+        this.datePosted = datePosted;
+    }
+
+    public LocalDateTime getDateUpdated() {
+        return dateUpdated;
+    }
+
+    public void setDateUpdated(LocalDateTime dateUpdated) {
+        this.dateUpdated = dateUpdated;
+    }
+
 
 }
