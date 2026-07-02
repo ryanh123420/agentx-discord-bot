@@ -17,9 +17,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,7 +122,11 @@ public class PostOutListener extends ListenerAdapter {
         }
         else if(event.getComponentId().equals("postout-confirm")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
-            event.editMessage("Post out created!!!")
+
+            String response = postOutService.insertPostOut(event.getUser().getId(),
+                    postOutService.getDates(confirmedDays));
+
+            event.editMessage(response)
                     .setComponents()
                     .queue();
         }
@@ -136,10 +137,11 @@ public class PostOutListener extends ListenerAdapter {
         if(event.getModalId().equals("postout-modal")) {
             String dateInput = event.getValue("dateinput").getAsString();
 
-            //Call PostOutService with the dates
+            String response = postOutService.insertPostOut(event.getUser().getId(), postOutService.getDatesFromString(dateInput));
 
-            //placeholder
-            event.reply("You did it!").setEphemeral(true).queue();
+            event.editMessage(response)
+                    .setComponents()
+                    .queue();
         }
     }
 

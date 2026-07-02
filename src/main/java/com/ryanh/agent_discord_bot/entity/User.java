@@ -1,4 +1,4 @@
-package com.ryanh.agent_discord_bot.model;
+package com.ryanh.agent_discord_bot.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

@@ -1,10 +1,11 @@
-package com.ryanh.agent_discord_bot.model;
+package com.ryanh.agent_discord_bot.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -18,13 +19,11 @@ public class PostOut {
     @NotBlank
     private String discordId;
 
-    @Future
+    @FutureOrPresent
     private LocalDate postDate;
 
-    @NotBlank
     private LocalDateTime datePosted;
 
-    @NotBlank
     private LocalDateTime dateUpdated;
 
     public PostOut() {
