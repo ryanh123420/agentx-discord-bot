@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PostOutService {
@@ -92,4 +93,14 @@ public class PostOutService {
         return result;
     }
 
+    public List<String> getUsersPostOuts(String discordId) {
+        List<PostOut> postOuts = postOutRepository.findAllByDiscordId(discordId);
+
+        return postOuts.stream()
+                .map(s -> s.getPostDate().getDayOfWeek()
+                        + " " + s.getPostDate().getMonthValue()
+                        + "/" + s.getPostDate().getDayOfMonth()
+                        + "/" + s.getPostDate().getYear())
+                .toList();
+    }
 }

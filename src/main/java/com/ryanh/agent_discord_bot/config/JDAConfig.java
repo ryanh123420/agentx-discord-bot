@@ -38,7 +38,10 @@ public class JDAConfig {
                         Commands.slash("register", "Register with BattleTag")
                                 .addOption(OptionType.STRING, "battletag", "Enter BattleTag", true),
                         Commands.slash("unregister", "Un-register a BattleTag"),
-                        Commands.slash("postout", "Create a Post-Out for a raid")
+                        Commands.slash("postout", "Create a Post-Out for a raid"),
+                        Commands.slash("viewpostouts", "View my Post-Outs for raid"),
+                        Commands.slash("editpostout", "Edit my Post-Outs for raid"),
+                        Commands.slash("deletepostout", "Delete a Post-Out for raid")
         ).queue();
 
         return jda;
