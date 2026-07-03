@@ -9,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PostOutService {
@@ -32,10 +31,17 @@ public class PostOutService {
         return "Post out added!!!!!";
     }
 
-    public String deletePostOut() {
+    public String deletePostOut(String discordId, List<String> postOutList) {
+        for (String id: postOutList) {
+            PostOut postOut = postOutRepository.findById(Integer.parseInt(id))
+                    .orElse(null);
 
+            if(postOut != null && postOut.getDiscordId().equals(discordId)) {
+                postOutRepository.delete(postOut);
+            }
+        }
 
-        return "Post out cancelled!!!!";
+        return "Post out deleted!!!!";
     }
 
     public LocalDate getReset() {
@@ -51,14 +57,21 @@ public class PostOutService {
         return  now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.TUESDAY));
     }
 
+    /**
+     * Need to refactor this method
+     * @param raidDay
+     * @return
+     */
     public boolean isRaidDayPassed(DayOfWeek raidDay) {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
         DayOfWeek today = now.getDayOfWeek();
-        if(today.getValue() > raidDay.getValue()) {
-            return true;
-        }
-        else if(today == raidDay && now.getHour() >= 21) {
-            return true;
+        if(!(today.getValue() == 1 || today.getValue() == 5 || today.getValue() == 6 || today.getValue() == 7)) {
+            if(today.getValue() > raidDay.getValue()) {
+                return true;
+            }
+            else if(today == raidDay && now.getHour() >= 21) {
+                return true;
+            }
         }
         return false;
     }
@@ -93,14 +106,24 @@ public class PostOutService {
         return result;
     }
 
-    public List<String> getUsersPostOuts(String discordId) {
-        List<PostOut> postOuts = postOutRepository.findAllByDiscordId(discordId);
+    public List<PostOut> getUsersPostOuts(String discordId) {
+        return postOutRepository.findAllByDiscordId(discordId);
+    }
 
+    public List<String> printListOfPostOuts(List<PostOut> postOuts) {
         return postOuts.stream()
-                .map(s -> s.getPostDate().getDayOfWeek()
-                        + " " + s.getPostDate().getMonthValue()
-                        + "/" + s.getPostDate().getDayOfMonth()
-                        + "/" + s.getPostDate().getYear())
+                .map(this::formatDate)
                 .toList();
     }
+
+    public String printSinglePostOut(PostOut postOut) {
+        return formatDate(postOut);
+    }
+
+    private String formatDate(PostOut postOut) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE M/d/yyyy");
+        return postOut.getPostDate().format(formatter);
+    }
+
+
 }

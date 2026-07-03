@@ -1,5 +1,6 @@
 package com.ryanh.agent_discord_bot.listener;
 
+import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.PostOutService;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -26,6 +27,7 @@ public class PostOutListener extends ListenerAdapter {
 
     private final PostOutService postOutService;
     private final Map<String, List<String>> daySelections = new HashMap<>();
+    private final Map<String, List<String>> deleteSelections = new HashMap<>();
 
     public PostOutListener(PostOutService postOutService) {
         this.postOutService = postOutService;
@@ -58,28 +60,40 @@ public class PostOutListener extends ListenerAdapter {
 
         //View command
         else if(event.getName().equals("postout") && "view".equals(event.getSubcommandName())) {
-            StringBuilder builder = new StringBuilder();
-            List<String> response = postOutService.getUsersPostOuts(event.getUser().getId());
+            List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
+            List<String> response = postOutService.printListOfPostOuts(postOutList);
 
-            builder.append("Here's the list of your post out dates: \n");
-
-            for(String date: response) {
-                builder.append(date.substring(0,1).toUpperCase())
-                        .append(date.substring(1).toLowerCase())
-                        .append("\n");
-            }
-
-            event.reply(builder.toString()).setEphemeral(true).queue();
+            event.reply("Here's the list of your post out dates: \n"
+                            + response)
+                    .setEphemeral(true)
+                    .queue();
         }
 
         //Delete command
         else if (event.getName().equals("postout") && "delete".equals(event.getSubcommandName())) {
 
+            StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdelete")
+                    .setMinValues(1);
 
-
-            //StringSelectMenu.Builder menu = StringSelectMenu.create("test");
+            for(PostOut post: postOutService.getUsersPostOuts(event.getUser().getId())) {
+                menu.addOption(
+                        postOutService.printSinglePostOut(post),
+                        String.valueOf(post.getId())
+                );
+            }
+            menu.setMaxValues(menu.getOptions().size());
 
             event.reply("Select Post Outs to delete")
+                    .setComponents(
+                            ActionRow.of(
+                                    menu.build()
+                            ),
+                            ActionRow.of(
+                                    Button.primary("postout-delete-confirm", "Confirm"),
+                                    Button.danger("postout-delete-cancel", "Cancel")
+                            )
+                    )
+
                     .setEphemeral(true)
                     .queue();
         }
@@ -103,6 +117,9 @@ public class PostOutListener extends ListenerAdapter {
                 StringSelectMenu.Builder menu = StringSelectMenu.create("postout-thisreset-selectdays")
                         .setMinValues(1);
                 LocalDate reset = postOutService.getReset();
+                System.out.println(reset.toString());
+
+                System.out.println(postOutService.isRaidDayPassed(DayOfWeek.TUESDAY));
 
                 if(!postOutService.isRaidDayPassed(DayOfWeek.TUESDAY)) {
                     menu.addOption("Tuesday", "tuesday",
@@ -126,8 +143,8 @@ public class PostOutListener extends ListenerAdapter {
                                         menu.build()
                                 ),
                                 ActionRow.of(
-                                        Button.primary("postout-confirm", "Confirm"),
-                                        Button.danger("postout-cancel", "Cancel")
+                                        Button.primary("postout-create-confirm", "Confirm"),
+                                        Button.danger("postout-create-cancel", "Cancel")
                                 )
                         ).queue();
             }
@@ -145,8 +162,11 @@ public class PostOutListener extends ListenerAdapter {
             }
 
         }
-        else if (event.getComponentId().equals("postout-thisreset-selectdays")) {
+        else if(event.getComponentId().equals("postout-thisreset-selectdays")) {
             daySelections.put(event.getUser().getId(), event.getValues());
+            event.deferEdit().queue();
+        } else if(event.getComponentId().equals("postout-selectdelete")) {
+            deleteSelections.put(event.getUser().getId(), event.getValues());
             event.deferEdit().queue();
         }
 
@@ -154,16 +174,31 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
-        if(event.getComponentId().equals("postout-cancel")) {
+        if(event.getComponentId().equals("postout-create-cancel")) {
             daySelections.remove(event.getUser().getId());
             event.editMessage("Post out cancelled.")
                     .setComponents().queue();
         }
-        else if(event.getComponentId().equals("postout-confirm")) {
+        else if(event.getComponentId().equals("postout-create-confirm")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
             String response = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.getDates(confirmedDays));
+
+            event.editMessage(response)
+                    .setComponents()
+                    .queue();
+        }
+        else if(event.getComponentId().equals("postout-delete-cancel")) {
+            deleteSelections.remove(event.getUser().getId());
+            event.editMessage("Delete canceled.")
+                    .setComponents().queue();
+        }
+        else if(event.getComponentId().equals("postout-delete-confirm")) {
+            List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
+
+            String response = postOutService.deletePostOut(event.getUser().getId(),
+                    confirmedDeleteIds);
 
             event.editMessage(response)
                     .setComponents()

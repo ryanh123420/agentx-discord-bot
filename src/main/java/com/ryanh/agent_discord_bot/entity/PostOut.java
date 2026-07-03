@@ -36,6 +36,10 @@ public class PostOut {
         this.dateUpdated = dateUpdated;
     }
 
+    public Integer getId() {
+        return id;
+    }
+
     public String getDiscordId() {
         return discordId;
     }
@@ -67,6 +71,7 @@ public class PostOut {
     public void setDateUpdated(LocalDateTime dateUpdated) {
         this.dateUpdated = dateUpdated;
     }
+
 
 
 }
