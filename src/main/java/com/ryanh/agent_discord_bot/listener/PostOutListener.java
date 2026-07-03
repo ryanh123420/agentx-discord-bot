@@ -33,35 +33,74 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if(event.getName().equals("postout")) {
+        //Create command
+        if(event.getName().equals("postout") && "create".equals(event.getSubcommandName())) {
             LocalDate reset = postOutService.getReset();
 
             event.reply("When do you need to post out?")
                     .addComponents(
                             ActionRow.of(
-                                    StringSelectMenu.create("reset")
-                                    .addOption("This Reset", "currentReset",
+                                    StringSelectMenu.create("postOut-create-selectReset")
+                                    .addOption("This Reset", "postOut-create-thisReset",
                                             "Week of "
                                             + reset.getMonthValue() + "/"
                                             + reset.getDayOfMonth())
-                                    .addOption("Future Date", "futureReset",
+                                    .addOption("Future Date", "postOut-create-futureReset",
                                             "After this reset at a later date.")
                                     .build()),
                             ActionRow.of(
-                                    Button.danger("postout-cancel", "Cancel")
+                                    Button.danger("postOut-create-cancel", "Cancel")
                             )
                     )
                     .setEphemeral(true)
                     .queue();
         }
+
+        //View command
+        else if(event.getName().equals("postout") && "view".equals(event.getSubcommandName())) {
+            StringBuilder builder = new StringBuilder();
+            List<String> response = postOutService.getUsersPostOuts(event.getUser().getId());
+
+            builder.append("Here's the list of your post out dates: \n");
+
+            for(String date: response) {
+                builder.append(date.substring(0,1).toUpperCase())
+                        .append(date.substring(1).toLowerCase())
+                        .append("\n");
+            }
+
+            event.reply(builder.toString()).setEphemeral(true).queue();
+        }
+
+        //Delete command
+        else if (event.getName().equals("postout") && "delete".equals(event.getSubcommandName())) {
+
+
+
+            //StringSelectMenu.Builder menu = StringSelectMenu.create("test");
+
+            event.reply("Select Post Outs to delete")
+                    .setEphemeral(true)
+                    .queue();
+        }
+
+        //Edit command
+        else if (event.getName().equals("postout") && "edit".equals(event.getSubcommandName())) {
+
+            //placeholder
+            event.reply("Select Post Outs to edit")
+                    .setEphemeral(true)
+                    .queue();
+        }
     }
+
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
-        if(event.getComponentId().equals("reset")) {
+        if(event.getComponentId().equals("postOut-create-selectReset")) {
             String selected = event.getValues().getFirst();
-            if(selected.equals("currentReset")) {
-                StringSelectMenu.Builder menu = StringSelectMenu.create("postoutdays")
+            if(selected.equals("postOut-create-thisReset")) {
+                StringSelectMenu.Builder menu = StringSelectMenu.create("postOut-create-thisReset-selectDays")
                         .setMinValues(1);
                 LocalDate reset = postOutService.getReset();
 
@@ -87,18 +126,18 @@ public class PostOutListener extends ListenerAdapter {
                                         menu.build()
                                 ),
                                 ActionRow.of(
-                                        Button.primary("postout-confirm", "Confirm"),
-                                        Button.danger("postout-cancel", "Cancel")
+                                        Button.primary("postOut-create-confirm", "Confirm"),
+                                        Button.danger("postOut-create-cancel", "Cancel")
                                 )
                         ).queue();
             }
-            else if (selected.equals("futureReset")) {
-                TextInput dateInput = TextInput.create("dateinput", TextInputStyle.SHORT)
+            else if (selected.equals("postOut-create-futureReset")) {
+                TextInput dateInput = TextInput.create("dateInput", TextInputStyle.SHORT)
                         .setPlaceholder("Example format: 4/20, 6/7, 6/9")
                         .setRequired(true)
                         .build();
 
-                Modal modal = Modal.create("postout-modal", "Post Out")
+                Modal modal = Modal.create("postOut-create-futureReset-dateInputModal", "Post Out")
                         .addComponents(Label.of("Enter month/day, separated by commas", dateInput))
                         .build();
 
@@ -106,7 +145,7 @@ public class PostOutListener extends ListenerAdapter {
             }
 
         }
-        else if (event.getComponentId().equals("postoutdays")) {
+        else if (event.getComponentId().equals("postOut-create-thisReset-selectDays")) {
             daySelections.put(event.getUser().getId(), event.getValues());
             event.deferEdit().queue();
         }
@@ -115,12 +154,12 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
-        if(event.getComponentId().equals("postout-cancel")) {
+        if(event.getComponentId().equals("postOut-create-cancel")) {
             daySelections.remove(event.getUser().getId());
             event.editMessage("Post out cancelled.")
                     .setComponents().queue();
         }
-        else if(event.getComponentId().equals("postout-confirm")) {
+        else if(event.getComponentId().equals("postOut-create-confirm")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
             String response = postOutService.insertPostOut(event.getUser().getId(),
@@ -134,8 +173,8 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onModalInteraction(ModalInteractionEvent event) {
-        if(event.getModalId().equals("postout-modal")) {
-            String dateInput = event.getValue("dateinput").getAsString();
+        if(event.getModalId().equals("postOut-create-futureReset-dateInputModal")) {
+            String dateInput = event.getValue("dateInput").getAsString();
 
             String response = postOutService.insertPostOut(event.getUser().getId(), postOutService.getDatesFromString(dateInput));
 

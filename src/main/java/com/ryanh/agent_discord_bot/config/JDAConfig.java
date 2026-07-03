@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,10 +39,13 @@ public class JDAConfig {
                         Commands.slash("register", "Register with BattleTag")
                                 .addOption(OptionType.STRING, "battletag", "Enter BattleTag", true),
                         Commands.slash("unregister", "Un-register a BattleTag"),
-                        Commands.slash("postout", "Create a Post-Out for a raid"),
-                        Commands.slash("viewpostouts", "View my Post-Outs for raid"),
-                        Commands.slash("editpostout", "Edit my Post-Outs for raid"),
-                        Commands.slash("deletepostout", "Delete a Post-Out for raid")
+                        Commands.slash("postout", "Post-Out commands")
+                                .addSubcommands(
+                                        new SubcommandData("create", "Create a Post-Out for a raid"),
+                                        new SubcommandData("view", "View my Post-Outs for raid"),
+                                        new SubcommandData("edit", "Edit my Post-Outs for raid"),
+                                        new SubcommandData("delete", "Delete a Post-Out for raid")
+                                )
         ).queue();
 
         return jda;
