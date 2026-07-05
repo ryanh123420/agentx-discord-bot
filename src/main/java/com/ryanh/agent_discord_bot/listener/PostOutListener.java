@@ -16,8 +16,6 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +35,6 @@ public class PostOutListener extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         //Create command
         if(event.getName().equals("postout") && "create".equals(event.getSubcommandName())) {
-            LocalDate reset = postOutService.getReset();
 
             event.reply("When do you need to post out?")
                     .addComponents(
@@ -45,8 +42,8 @@ public class PostOutListener extends ListenerAdapter {
                                     StringSelectMenu.create("postout-selectreset")
                                     .addOption("This Reset", "postout-thisreset",
                                             "Week of "
-                                            + reset.getMonthValue() + "/"
-                                            + reset.getDayOfMonth())
+                                            + postOutService.getReset().getMonthValue() + "/"
+                                            + postOutService.getReset().getDayOfMonth())
                                     .addOption("Future Date", "postout-futurereset",
                                             "After this reset at a later date.")
                                     .build()),
@@ -116,24 +113,10 @@ public class PostOutListener extends ListenerAdapter {
             if(selected.equals("postout-thisreset")) {
                 StringSelectMenu.Builder menu = StringSelectMenu.create("postout-thisreset-selectdays")
                         .setMinValues(1);
-                LocalDate reset = postOutService.getReset();
-                System.out.println(reset.toString());
 
-                System.out.println(postOutService.isRaidDayPassed(DayOfWeek.TUESDAY));
-
-                if(!postOutService.isRaidDayPassed(DayOfWeek.TUESDAY)) {
-                    menu.addOption("Tuesday", "tuesday",
-                            reset.getMonthValue() + "/" + reset.getDayOfMonth());
-                }
-                if(!postOutService.isRaidDayPassed(DayOfWeek.WEDNESDAY)) {
-                    menu.addOption("Wednesday", "wednesday",
-                            reset.plusDays(1).getMonthValue()
-                                    + "/" + reset.plusDays(1).getDayOfMonth());
-                }
-                if(!postOutService.isRaidDayPassed(DayOfWeek.THURSDAY)) {
-                    menu.addOption("Thursday", "thursday",
-                            reset.plusDays(2).getMonthValue()
-                                    + "/" + reset.plusDays(2).getDayOfMonth());
+                for (PostOutService.RaidDay day: postOutService.validMenuOptions()) {
+                    menu.addOption(day.label(), day.value(),
+                            day.date().getMonth().getValue() + "/" + day.date().getDayOfMonth());
                 }
                 menu.setMaxValues(menu.getOptions().size());
 
@@ -183,7 +166,7 @@ public class PostOutListener extends ListenerAdapter {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
             String response = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.getDates(confirmedDays));
+                    postOutService.getDatesFromSelect(confirmedDays));
 
             event.editMessage(response)
                     .setComponents()
@@ -211,7 +194,8 @@ public class PostOutListener extends ListenerAdapter {
         if(event.getModalId().equals("postout-futurereset-datemodal")) {
             String dateInput = event.getValue("dateInput").getAsString();
 
-            String response = postOutService.insertPostOut(event.getUser().getId(), postOutService.getDatesFromString(dateInput));
+            String response = postOutService.insertPostOut(event.getUser().getId(),
+                    postOutService.getDatesFromModal(dateInput));
 
             event.editMessage(response)
                     .setComponents()

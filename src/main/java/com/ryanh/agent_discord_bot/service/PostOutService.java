@@ -1,5 +1,6 @@
 package com.ryanh.agent_discord_bot.service;
 
+import com.ryanh.agent_discord_bot.config.GuildConfig;
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.repository.PostOutRepository;
 import org.springframework.stereotype.Service;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -14,10 +16,19 @@ import java.util.List;
 public class PostOutService {
 
     private final PostOutRepository postOutRepository;
+    private final GuildConfig guildConfig;
+    private final int lastRaidDayOfReset;
 
-    public PostOutService(PostOutRepository postOutRepository) {
+    public PostOutService(PostOutRepository postOutRepository, GuildConfig guildConfig) {
         this.postOutRepository = postOutRepository;
+        this.guildConfig = guildConfig;
+        this.lastRaidDayOfReset = guildConfig.getRaidDays().stream()
+                .mapToInt(this::daysSinceReset)
+                .max()
+                .orElse(0);
     }
+
+    public record RaidDay(String label, String value, LocalDate date) {}
 
     public String insertPostOut(String discordId, List<LocalDate> dateList) {
 
@@ -45,39 +56,76 @@ public class PostOutService {
     }
 
     public LocalDate getReset() {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
-        if(now.getDayOfWeek() == DayOfWeek.THURSDAY && now.getHour() >= 21) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(guildConfig.getTimezone()));
+
+        if(daysSinceReset(now.getDayOfWeek()) == lastRaidDayOfReset
+                && now.getHour() >= guildConfig.getRaidStartTime()) {
             now = now.plusWeeks(1);
         }
-        else if(now.getDayOfWeek().getValue() > DayOfWeek.THURSDAY.getValue()
-                || now.getDayOfWeek().getValue() < DayOfWeek.TUESDAY.getValue()) {
+        else if(daysSinceReset(now.getDayOfWeek()) > lastRaidDayOfReset) {
             now = now.plusWeeks(1);
         }
 
-        return  now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.TUESDAY));
+        return  now.toLocalDate().with(TemporalAdjusters.previousOrSame(guildConfig.getResetDay()));
     }
 
     /**
-     * Need to refactor this method
-     * @param raidDay
-     * @return
+     * Return a days value based off the start of the week being on the weekly reset
+     * @param day A day Monday through Sunday
+     * @return The days value based of the weekly reset (i.e for US weekly reset, Tues = 1 and Mon = 7)
      */
-    public boolean isRaidDayPassed(DayOfWeek raidDay) {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("America/New_York"));
-        DayOfWeek today = now.getDayOfWeek();
-        if(!(today.getValue() == 1 || today.getValue() == 5 || today.getValue() == 6 || today.getValue() == 7)) {
-            if(today.getValue() > raidDay.getValue()) {
-                return true;
-            }
-            else if(today == raidDay && now.getHour() >= 21) {
-                return true;
-            }
-        }
-        return false;
+    private int daysSinceReset(DayOfWeek day) {
+        return (day.getValue() - guildConfig.getResetDay().getValue() + 7) % 7 + 1;
     }
 
-    public List<LocalDate> getDates(List<String> confirmedDays) {
-        LocalDate now = LocalDate.now(ZoneId.of("America/New_York"));
+    /**
+     * Checks if the input would be within a valid timeframe to add as a menu option in the PostOutListener
+     * @param raidDay Current raid day
+     * @return True if before the start time of a raid day, false if after raid day has passed that reset
+     */
+    private boolean isValidMenuOption(DayOfWeek raidDay) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(guildConfig.getTimezone()));
+        int lastDay = guildConfig.getRaidDays().stream()
+                .mapToInt(this::daysSinceReset)
+                .max()
+                .orElse(0);
+        int todayValue = daysSinceReset(now.getDayOfWeek());
+        int raidDayValue = daysSinceReset(raidDay);
+
+        if(todayValue < lastDay) {
+            if(raidDayValue == todayValue && now.getHour() > guildConfig.getRaidStartTime()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Provides a list of valid menu options for the Select Reset option on the PostOutListener
+     * @return List of valid RaidDays to add as menu options
+     */
+    public List<RaidDay> validMenuOptions() {
+        LocalDate reset = getReset();
+        List<RaidDay> raidDaysList = new ArrayList<>();
+
+        for(int i = 0; i < guildConfig.getRaidDays().size(); i++) {
+            DayOfWeek day = guildConfig.getRaidDays().get(i);
+
+            if(isValidMenuOption(day)) {
+                int offset = daysSinceReset(day) - 1;
+
+                raidDaysList.add(new RaidDay(day.name().charAt(0)
+                        + day.name().substring(1).toLowerCase(),
+                        day.name().toLowerCase(),
+                        reset.plusDays(offset)));
+            }
+        }
+
+        return raidDaysList;
+    }
+
+    public List<LocalDate> getDatesFromSelect(List<String> confirmedDays) {
+        LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
 
         return confirmedDays.stream()
                 .map(s -> DayOfWeek.valueOf(s.toUpperCase()))
@@ -85,9 +133,9 @@ public class PostOutService {
                 .toList();
     }
 
-    public List<LocalDate> getDatesFromString(String datesInput) {
+    public List<LocalDate> getDatesFromModal(String datesInput) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("M/d");
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("America/New_York"));
+        LocalDateTime now = LocalDateTime.now(ZoneId.of(guildConfig.getTimezone()));
 
         return Arrays.stream(datesInput.split(","))
                 .map(String::trim)
@@ -100,7 +148,7 @@ public class PostOutService {
         MonthDay monthDay = MonthDay.parse(date, formatter);
         LocalDate result = monthDay.atYear(currentYear);
 
-        if(result.isBefore(LocalDate.now(ZoneId.of("America/New_York")))) {
+        if(result.isBefore(LocalDate.now(ZoneId.of(guildConfig.getTimezone())))) {
             result = result.plusYears(1);
         }
         return result;
