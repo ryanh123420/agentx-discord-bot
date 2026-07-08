@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -93,7 +94,10 @@ public class PostOutService {
         int raidDayValue = daysSinceReset(raidDay);
 
         if(todayValue < lastDay) {
-            if(raidDayValue == todayValue && now.getHour() > guildConfig.getRaidStartTime()) {
+            if(raidDayValue < todayValue) {
+                return false;
+            }
+            else if(raidDayValue == todayValue && now.getHour() > guildConfig.getRaidStartTime()) {
                 return false;
             }
         }
@@ -160,6 +164,7 @@ public class PostOutService {
 
     public List<String> printListOfPostOuts(List<PostOut> postOuts) {
         return postOuts.stream()
+                .sorted(Comparator.comparing(PostOut::getPostDate))
                 .map(this::formatDate)
                 .toList();
     }

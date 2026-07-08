@@ -64,8 +64,13 @@ public class PostOutListener extends ListenerAdapter {
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
             List<String> response = postOutService.printListOfPostOuts(postOutList);
 
+            StringBuilder stringBuilder = new StringBuilder();
+            for(String s: response) {
+                stringBuilder.append(s).append("\n");
+            }
+
             event.replyEmbeds(MessageEmbeds.info("View your Post Outs",
-                            "Here's the list of your post out dates: \n" + response)
+                            "Here's the list of your post out dates: \n" + stringBuilder)
                             .build())
                     .setEphemeral(true)
                     .queue();
