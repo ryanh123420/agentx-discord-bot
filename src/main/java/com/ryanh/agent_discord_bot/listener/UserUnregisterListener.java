@@ -1,6 +1,7 @@
 package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.service.UserService;
+import com.ryanh.agent_discord_bot.utility.MessageEmbeds;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -20,7 +21,9 @@ public class UserUnregisterListener extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if(event.getName().equals("unregister")) {
             if(userService.checkIfRegistered(event.getUser().getId())) {
-                event.reply("Are you sure you want to unregister your BattleTag?")
+                event.replyEmbeds(MessageEmbeds.info("Unregister BattleTag",
+                                "Are you sure you want to unregister your BattleTag?")
+                                .build())
                         .addComponents(ActionRow.of(
                                 Button.primary("unregister-confirm","Confirm"),
                                 Button.danger("unregister-cancel", "Cancel")))
@@ -28,7 +31,11 @@ public class UserUnregisterListener extends ListenerAdapter {
                         .queue();
             }
             else {
-                event.reply("You aren't registered!").setEphemeral(true).queue();
+                event.replyEmbeds(MessageEmbeds.error("Unregister BattleTag",
+                        "You aren't registered!")
+                                .build())
+                        .setEphemeral(true)
+                        .queue();
             }
         }
     }
@@ -37,11 +44,17 @@ public class UserUnregisterListener extends ListenerAdapter {
     public void onButtonInteraction(ButtonInteractionEvent event) {
         if(event.getComponentId().equals("unregister-confirm")) {
             String response = userService.removeUser(event.getUser().getId());
-            event.reply(response).setEphemeral(true).queue();
+            event.replyEmbeds(MessageEmbeds.confirm("Unregister BattleTag", response)
+                            .build())
+                    .setEphemeral(true).
+                    queue();
         }
         else if(event.getComponentId().equals("unregister-cancel")) {
-            event.reply("BattleTag registration cancelled")
-                    .setEphemeral(true).queue();
+            event.replyEmbeds(MessageEmbeds.error("Unregister BattleTag",
+                            "BattleTag registration cancelled")
+                            .build())
+                    .setEphemeral(true)
+                    .queue();
         }
     }
 }

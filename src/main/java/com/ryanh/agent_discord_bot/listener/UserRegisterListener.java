@@ -1,6 +1,7 @@
 package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.service.UserService;
+import com.ryanh.agent_discord_bot.utility.MessageEmbeds;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.springframework.stereotype.Component;
@@ -21,12 +22,16 @@ public class UserRegisterListener extends ListenerAdapter {
             String input = event.getOption("battletag").getAsString();
 
             if(!input.matches(".+#\\d+")) {
-                event.reply("Invalid BattleTag format, double check formatting follows: Name#1234")
+                event.replyEmbeds(MessageEmbeds.error("Register BattleTag",
+                                "Invalid BattleTag format, double check formatting follows: Name#1234")
+                                .build())
                         .setEphemeral(true).queue();
             }
 
             String response = userService.insertUser(input, discordId);
-            event.reply(response).setEphemeral(true).queue();
+            event.replyEmbeds(MessageEmbeds.confirm("Register BattleTag", response).build())
+                    .setEphemeral(true)
+                    .queue();
         }
     }
 }
