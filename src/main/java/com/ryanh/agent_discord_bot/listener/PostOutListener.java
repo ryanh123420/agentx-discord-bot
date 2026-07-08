@@ -2,6 +2,8 @@ package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.PostOutService;
+import com.ryanh.agent_discord_bot.utility.MessageEmbeds;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
@@ -16,6 +18,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
+import java.awt.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +38,9 @@ public class PostOutListener extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         //Create command
         if(event.getName().equals("postout") && "create".equals(event.getSubcommandName())) {
-
-            event.reply("When do you need to post out?")
+            event.replyEmbeds(MessageEmbeds.info("Create a Post Out",
+                                    "When do you need to post out?")
+                            .build())
                     .addComponents(
                             ActionRow.of(
                                     StringSelectMenu.create("postout-selectreset")
@@ -60,8 +64,9 @@ public class PostOutListener extends ListenerAdapter {
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
             List<String> response = postOutService.printListOfPostOuts(postOutList);
 
-            event.reply("Here's the list of your post out dates: \n"
-                            + response)
+            event.replyEmbeds(MessageEmbeds.info("View your Post Outs",
+                            "Here's the list of your post out dates: \n" + response)
+                            .build())
                     .setEphemeral(true)
                     .queue();
         }
@@ -80,7 +85,8 @@ public class PostOutListener extends ListenerAdapter {
             }
             menu.setMaxValues(menu.getOptions().size());
 
-            event.reply("Select Post Outs to delete")
+            event.replyEmbeds(MessageEmbeds.info("Delete a Post Out",
+                            "Select Post Outs to delete").build())
                     .setComponents(
                             ActionRow.of(
                                     menu.build()
@@ -91,15 +97,6 @@ public class PostOutListener extends ListenerAdapter {
                             )
                     )
 
-                    .setEphemeral(true)
-                    .queue();
-        }
-
-        //Edit command
-        else if (event.getName().equals("postout") && "edit".equals(event.getSubcommandName())) {
-
-            //placeholder
-            event.reply("Select Post Outs to edit")
                     .setEphemeral(true)
                     .queue();
         }
@@ -120,7 +117,8 @@ public class PostOutListener extends ListenerAdapter {
                 }
                 menu.setMaxValues(menu.getOptions().size());
 
-                event.editMessage("Select which days:")
+                event.editMessageEmbeds(MessageEmbeds.info("Create a Post Out",
+                                "Select which days:").build())
                         .setComponents(
                                 ActionRow.of(
                                         menu.build()
@@ -137,7 +135,7 @@ public class PostOutListener extends ListenerAdapter {
                         .setRequired(true)
                         .build();
 
-                Modal modal = Modal.create("postout-futurereset-datemodal", "Post Out")
+                Modal modal = Modal.create("postout-futurereset-datemodal", "Create a Post Out")
                         .addComponents(Label.of("Enter month/day, separated by commas", dateInput))
                         .build();
 
@@ -148,7 +146,8 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-thisreset-selectdays")) {
             daySelections.put(event.getUser().getId(), event.getValues());
             event.deferEdit().queue();
-        } else if(event.getComponentId().equals("postout-selectdelete")) {
+        }
+        else if(event.getComponentId().equals("postout-selectdelete")) {
             deleteSelections.put(event.getUser().getId(), event.getValues());
             event.deferEdit().queue();
         }
@@ -159,7 +158,8 @@ public class PostOutListener extends ListenerAdapter {
     public void onButtonInteraction(ButtonInteractionEvent event) {
         if(event.getComponentId().equals("postout-create-cancel")) {
             daySelections.remove(event.getUser().getId());
-            event.editMessage("Post out cancelled.")
+            event.editMessageEmbeds(MessageEmbeds.error("Create a Post Out",
+                            "Post Out canceled").build())
                     .setComponents().queue();
         }
         else if(event.getComponentId().equals("postout-create-confirm")) {
@@ -168,13 +168,14 @@ public class PostOutListener extends ListenerAdapter {
             String response = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.getDatesFromSelect(confirmedDays));
 
-            event.editMessage(response)
+            event.editMessageEmbeds(MessageEmbeds.confirm("Create a Post Out", response).build())
                     .setComponents()
                     .queue();
         }
         else if(event.getComponentId().equals("postout-delete-cancel")) {
             deleteSelections.remove(event.getUser().getId());
-            event.editMessage("Delete canceled.")
+            event.editMessageEmbeds(MessageEmbeds.error("Delete a Post Out",
+                            "Delete canceled").build())
                     .setComponents().queue();
         }
         else if(event.getComponentId().equals("postout-delete-confirm")) {
@@ -183,7 +184,7 @@ public class PostOutListener extends ListenerAdapter {
             String response = postOutService.deletePostOut(event.getUser().getId(),
                     confirmedDeleteIds);
 
-            event.editMessage(response)
+            event.editMessageEmbeds(MessageEmbeds.confirm("Delete a Post Out", response).build())
                     .setComponents()
                     .queue();
         }
@@ -197,11 +198,9 @@ public class PostOutListener extends ListenerAdapter {
             String response = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.getDatesFromModal(dateInput));
 
-            event.editMessage(response)
+            event.editMessageEmbeds(MessageEmbeds.confirm("Create a Post Out", response).build())
                     .setComponents()
                     .queue();
         }
     }
-
-
 }

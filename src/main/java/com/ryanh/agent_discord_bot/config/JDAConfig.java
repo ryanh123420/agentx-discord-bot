@@ -43,7 +43,6 @@ public class JDAConfig {
                                 .addSubcommands(
                                         new SubcommandData("create", "Create a Post-Out for a raid"),
                                         new SubcommandData("view", "View my Post-Outs for raid"),
-                                        new SubcommandData("edit", "Edit my Post-Outs for raid"),
                                         new SubcommandData("delete", "Delete a Post-Out for raid")
                                 )
         ).queue();
