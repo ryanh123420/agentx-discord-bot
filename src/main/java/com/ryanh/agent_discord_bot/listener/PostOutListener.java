@@ -61,49 +61,65 @@ public class PostOutListener extends ListenerAdapter {
 
         //View command
         else if(event.getName().equals("postout") && "view".equals(event.getSubcommandName())) {
+
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
-            List<String> response = postOutService.printListOfPostOuts(postOutList);
-
-            StringBuilder stringBuilder = new StringBuilder();
-            for(String s: response) {
-                stringBuilder.append(s).append("\n");
+            if(postOutList.isEmpty()) {
+                event.replyEmbeds(MessageEmbeds.error("View your Post Outs",
+                        "You don't have any post outs created")
+                        .build())
+                        .queue();
             }
+            else {
+                List<String> response = postOutService.printListOfPostOuts(postOutList);
+                StringBuilder stringBuilder = new StringBuilder();
+                for(String s: response) {
+                    stringBuilder.append(s).append("\n");
+                }
 
-            event.replyEmbeds(MessageEmbeds.info("View your Post Outs",
-                            "Here's the list of your post out dates: \n" + stringBuilder)
-                            .build())
-                    .setEphemeral(true)
-                    .queue();
+                event.replyEmbeds(MessageEmbeds.info("View your Post Outs",
+                                        "Here's the list of your post out dates: \n" + stringBuilder)
+                                .build())
+                        .setEphemeral(true)
+                        .queue();
+            }
         }
 
         //Delete command
         else if (event.getName().equals("postout") && "delete".equals(event.getSubcommandName())) {
-
-            StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdelete")
-                    .setMinValues(1);
-
-            for(PostOut post: postOutService.getUsersPostOuts(event.getUser().getId())) {
-                menu.addOption(
-                        postOutService.printSinglePostOut(post),
-                        String.valueOf(post.getId())
-                );
+            List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
+            if(postOutList.isEmpty()) {
+                event.replyEmbeds(MessageEmbeds.error("Delete Post Outs",
+                        "You don't have any post outs created")
+                        .build())
+                        .queue();
             }
-            menu.setMaxValues(menu.getOptions().size());
+            else {
+                StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdelete")
+                        .setMinValues(1);
 
-            event.replyEmbeds(MessageEmbeds.info("Delete a Post Out",
-                            "Select Post Outs to delete").build())
-                    .setComponents(
-                            ActionRow.of(
-                                    menu.build()
-                            ),
-                            ActionRow.of(
-                                    Button.primary("postout-delete-confirm", "Confirm"),
-                                    Button.danger("postout-delete-cancel", "Cancel")
-                            )
-                    )
+                for(PostOut post: postOutList) {
+                    menu.addOption(
+                            postOutService.printSinglePostOut(post),
+                            String.valueOf(post.getId())
+                    );
+                }
+                menu.setMaxValues(menu.getOptions().size());
 
-                    .setEphemeral(true)
-                    .queue();
+                event.replyEmbeds(MessageEmbeds.info("Delete Post Outs",
+                                "Select Post Outs to delete")
+                                .build())
+                        .setComponents(
+                                ActionRow.of(
+                                        menu.build()
+                                ),
+                                ActionRow.of(
+                                        Button.primary("postout-delete-confirm", "Confirm"),
+                                        Button.danger("postout-delete-cancel", "Cancel")
+                                )
+                        )
+                        .setEphemeral(true)
+                        .queue();
+            }
         }
     }
 
