@@ -3,6 +3,9 @@ package com.ryanh.agent_discord_bot.service;
 import com.ryanh.agent_discord_bot.config.GuildConfig;
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.repository.PostOutRepository;
+import com.ryanh.agent_discord_bot.utility.EmbedUtility;
+import net.dv8tion.jda.api.EmbedBuilder;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -17,16 +20,15 @@ import java.util.List;
 public class PostOutService {
 
     private final PostOutRepository postOutRepository;
+    private final NotificationService notificationService;
     private final GuildConfig guildConfig;
-    private final int lastRaidDayOfReset;
 
-    public PostOutService(PostOutRepository postOutRepository, GuildConfig guildConfig) {
+    public PostOutService(PostOutRepository postOutRepository,
+                          NotificationService notificationService,
+                          GuildConfig guildConfig) {
         this.postOutRepository = postOutRepository;
+        this.notificationService = notificationService;
         this.guildConfig = guildConfig;
-        this.lastRaidDayOfReset = guildConfig.getRaidDays().stream()
-                .mapToInt(this::daysSinceReset)
-                .max()
-                .orElse(0);
     }
 
     public record RaidDay(String label, String value, LocalDate date) {}
@@ -58,12 +60,17 @@ public class PostOutService {
 
     public LocalDate getReset() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of(guildConfig.getTimezone()));
+        List<DayOfWeek> raidDayList = guildConfig.getRaidDays();
+        int lastDay = 0;
+        for(DayOfWeek day: raidDayList) {
+            lastDay = Math.max(lastDay, daysSinceReset(day));
+        }
 
-        if(daysSinceReset(now.getDayOfWeek()) == lastRaidDayOfReset
+        if(daysSinceReset(now.getDayOfWeek()) == lastDay
                 && now.getHour() >= guildConfig.getRaidStartTime()) {
             now = now.plusWeeks(1);
         }
-        else if(daysSinceReset(now.getDayOfWeek()) > lastRaidDayOfReset) {
+        else if(daysSinceReset(now.getDayOfWeek()) > lastDay) {
             now = now.plusWeeks(1);
         }
 
@@ -73,7 +80,7 @@ public class PostOutService {
     /**
      * Return a days value based off the start of the week being on the weekly reset
      * @param day A day Monday through Sunday
-     * @return The days value based of the weekly reset (i.e for US weekly reset, Tues = 1 and Mon = 7)
+     * @return The days value based of the weekly reset (for US weekly reset, Tues = 1 and Mon = 7)
      */
     private int daysSinceReset(DayOfWeek day) {
         return (day.getValue() - guildConfig.getResetDay().getValue() + 7) % 7 + 1;
@@ -148,6 +155,16 @@ public class PostOutService {
                 .toList();
     }
 
+    public LocalDate getLastRaidDay() {
+        List<DayOfWeek> raidDayList = guildConfig.getRaidDays();
+        int lastDay = 0;
+        for(DayOfWeek day: raidDayList) {
+            lastDay = Math.max(lastDay, day.getValue());
+        }
+
+        return LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.of(lastDay)));
+    }
+
     private LocalDate parseDate(String date, DateTimeFormatter formatter, int currentYear) {
         MonthDay monthDay = MonthDay.parse(date, formatter);
         LocalDate result = monthDay.atYear(currentYear);
@@ -178,5 +195,22 @@ public class PostOutService {
         return postOut.getPostDate().format(formatter);
     }
 
+    @Scheduled(cron = "${guild.notification-schedule}", zone = "${guild.timezone}")
+    public void weeklyPostOutReminder() {
+        LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
+        if(!now.getDayOfWeek().equals(guildConfig.getResetDay())) {
+            return;
+        }
+
+        List<PostOut> postOutListThisWeek = postOutRepository.findByPostDateBetween(now, getLastRaidDay());
+        List<PostOut> postOutListNextWeek = postOutRepository.findByPostDateBetween(now.plusWeeks(1),
+                getLastRaidDay().plusWeeks(1));
+
+        notificationService.sendPostOutReport(postOutListThisWeek, postOutListNextWeek);
+    }
+
+    public void newPostOutNotification() {
+
+    }
 
 }

@@ -1,0 +1,64 @@
+package com.ryanh.agent_discord_bot.service;
+
+import com.ryanh.agent_discord_bot.config.GuildConfig;
+import com.ryanh.agent_discord_bot.entity.PostOut;
+import com.ryanh.agent_discord_bot.utility.EmbedUtility;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import org.springframework.stereotype.Service;
+
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@Service
+public class NotificationService {
+    private final JDA jda;
+    private final GuildConfig guildConfig;
+
+    public NotificationService(JDA jda, GuildConfig guildConfig) {
+        this.jda = jda;
+        this.guildConfig = guildConfig;
+    }
+
+    public void sendEmbedToChannel(MessageEmbed embed, String channelId) {
+        jda.getTextChannelById(channelId).sendMessageEmbeds(embed).queue();
+    }
+
+    public void sendPostOutReport(List<PostOut> thisWeek, List<PostOut> nextWeek) {
+        String thisWeekText = formatPostOutList(thisWeek);
+        String nextWeekText = formatPostOutList(nextWeek);
+
+        EmbedBuilder builder = EmbedUtility.postOutWeeklyNotification(thisWeekText, nextWeekText);
+        sendEmbedToChannel(builder.build(), guildConfig.getOfficerChannelId());
+    }
+
+    private String formatPostOutList(List<PostOut> postOutList) {
+        if(postOutList.isEmpty()) {
+            return "⭐ There are no post outs! ⭐";
+        }
+        StringBuilder builder = new StringBuilder();
+        Map<String, List<String>> userOutput = new HashMap<>();
+        for(PostOut post: postOutList) {
+            String discordUser = post.getDiscordId();
+            String date = post.getPostDate().format(DateTimeFormatter.ofPattern("EEE M/d"));
+            if(!userOutput.containsKey(discordUser)) {
+                userOutput.put(discordUser, new ArrayList<>());
+            }
+            userOutput.get(discordUser).add(date);
+        }
+
+        for(String user: userOutput.keySet()) {
+            builder.append("👤 <@").append(user).append(">")
+                    .append("\n");
+            for(String date: userOutput.get(user)) {
+                builder.append("🗓️ ")
+                        .append(date)
+                        .append("\n");
+            }
+            builder.append("\n");
+        }
+
+        return builder.toString();
+    }
+}

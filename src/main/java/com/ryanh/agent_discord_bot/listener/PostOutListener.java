@@ -2,8 +2,7 @@ package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.PostOutService;
-import com.ryanh.agent_discord_bot.utility.MessageEmbeds;
-import net.dv8tion.jda.api.EmbedBuilder;
+import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
@@ -18,7 +17,6 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
-import java.awt.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +36,7 @@ public class PostOutListener extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         //Create command
         if(event.getName().equals("postout") && "create".equals(event.getSubcommandName())) {
-            event.replyEmbeds(MessageEmbeds.info("Create a Post Out",
+            event.replyEmbeds(EmbedUtility.info("Create a Post Out",
                                     "When do you need to post out?")
                             .build())
                     .addComponents(
@@ -64,7 +62,7 @@ public class PostOutListener extends ListenerAdapter {
 
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
             if(postOutList.isEmpty()) {
-                event.replyEmbeds(MessageEmbeds.error("View your Post Outs",
+                event.replyEmbeds(EmbedUtility.error("View your Post Outs",
                         "You don't have any post outs created")
                         .build())
                         .queue();
@@ -76,7 +74,7 @@ public class PostOutListener extends ListenerAdapter {
                     stringBuilder.append(s).append("\n");
                 }
 
-                event.replyEmbeds(MessageEmbeds.info("View your Post Outs",
+                event.replyEmbeds(EmbedUtility.info("View your Post Outs",
                                         "Here's the list of your post out dates: \n" + stringBuilder)
                                 .build())
                         .setEphemeral(true)
@@ -88,7 +86,7 @@ public class PostOutListener extends ListenerAdapter {
         else if (event.getName().equals("postout") && "delete".equals(event.getSubcommandName())) {
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
             if(postOutList.isEmpty()) {
-                event.replyEmbeds(MessageEmbeds.error("Delete Post Outs",
+                event.replyEmbeds(EmbedUtility.error("Delete Post Outs",
                         "You don't have any post outs created")
                         .build())
                         .queue();
@@ -105,7 +103,7 @@ public class PostOutListener extends ListenerAdapter {
                 }
                 menu.setMaxValues(menu.getOptions().size());
 
-                event.replyEmbeds(MessageEmbeds.info("Delete Post Outs",
+                event.replyEmbeds(EmbedUtility.info("Delete Post Outs",
                                 "Select Post Outs to delete")
                                 .build())
                         .setComponents(
@@ -138,7 +136,7 @@ public class PostOutListener extends ListenerAdapter {
                 }
                 menu.setMaxValues(menu.getOptions().size());
 
-                event.editMessageEmbeds(MessageEmbeds.info("Create a Post Out",
+                event.editMessageEmbeds(EmbedUtility.info("Create a Post Out",
                                 "Select which days:").build())
                         .setComponents(
                                 ActionRow.of(
@@ -179,7 +177,7 @@ public class PostOutListener extends ListenerAdapter {
     public void onButtonInteraction(ButtonInteractionEvent event) {
         if(event.getComponentId().equals("postout-create-cancel")) {
             daySelections.remove(event.getUser().getId());
-            event.editMessageEmbeds(MessageEmbeds.error("Create a Post Out",
+            event.editMessageEmbeds(EmbedUtility.error("Create a Post Out",
                             "Post Out canceled").build())
                     .setComponents().queue();
         }
@@ -189,13 +187,13 @@ public class PostOutListener extends ListenerAdapter {
             String response = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.getDatesFromSelect(confirmedDays));
 
-            event.editMessageEmbeds(MessageEmbeds.confirm("Create a Post Out", response).build())
+            event.editMessageEmbeds(EmbedUtility.confirm("Create a Post Out", response).build())
                     .setComponents()
                     .queue();
         }
         else if(event.getComponentId().equals("postout-delete-cancel")) {
             deleteSelections.remove(event.getUser().getId());
-            event.editMessageEmbeds(MessageEmbeds.error("Delete a Post Out",
+            event.editMessageEmbeds(EmbedUtility.error("Delete a Post Out",
                             "Delete canceled").build())
                     .setComponents().queue();
         }
@@ -205,7 +203,7 @@ public class PostOutListener extends ListenerAdapter {
             String response = postOutService.deletePostOut(event.getUser().getId(),
                     confirmedDeleteIds);
 
-            event.editMessageEmbeds(MessageEmbeds.confirm("Delete a Post Out", response).build())
+            event.editMessageEmbeds(EmbedUtility.confirm("Delete a Post Out", response).build())
                     .setComponents()
                     .queue();
         }
@@ -219,7 +217,7 @@ public class PostOutListener extends ListenerAdapter {
             String response = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.getDatesFromModal(dateInput));
 
-            event.editMessageEmbeds(MessageEmbeds.confirm("Create a Post Out", response).build())
+            event.editMessageEmbeds(EmbedUtility.confirm("Create a Post Out", response).build())
                     .setComponents()
                     .queue();
         }

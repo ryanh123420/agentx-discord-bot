@@ -26,10 +26,9 @@ public class JDAConfig {
     private String guildId;
 
     @Bean
-    public JDA build(List<ListenerAdapter> listeners) throws InterruptedException {
+    public JDA build() throws InterruptedException {
         JDA jda = JDABuilder
                 .createDefault(token, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MESSAGES)
-                .addEventListeners(listeners.toArray())
                 .build()
                 .awaitReady();
 
@@ -44,6 +43,11 @@ public class JDAConfig {
                                         new SubcommandData("create", "Create a Post-Out for a raid"),
                                         new SubcommandData("view", "View my Post-Outs for raid"),
                                         new SubcommandData("delete", "Delete a Post-Out for raid")
+                                ),
+                        Commands.slash("threads", "placeholder")
+                                .addSubcommands(
+                                        new SubcommandData("update", "Update users on thread"),
+                                        new SubcommandData("settings", "Set which threads are managed")
                                 )
         ).queue();
 
