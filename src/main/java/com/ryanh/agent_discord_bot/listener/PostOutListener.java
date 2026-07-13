@@ -207,12 +207,19 @@ public class PostOutListener extends ListenerAdapter {
         if(event.getModalId().equals("postout-futurereset-datemodal")) {
             String dateInput = event.getValue("dateInput").getAsString();
 
-            String response = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.getDatesFromModal(dateInput));
+            try {
+                String response = postOutService.insertPostOut(event.getUser().getId(),
+                        postOutService.getDatesFromModal(dateInput));
 
-            event.editMessageEmbeds(EmbedUtility.confirm("Create a Post Out", response).build())
-                    .setComponents()
-                    .queue();
+                event.editMessageEmbeds(EmbedUtility.confirm("Create a Post Out", response).build())
+                        .setComponents()
+                        .queue();
+            }
+            catch (IllegalArgumentException e) {
+                event.editMessageEmbeds(EmbedUtility.error("Create a Post Out", e.getMessage()).build())
+                        .queue();
+            }
+
         }
     }
 }

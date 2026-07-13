@@ -147,12 +147,30 @@ public class PostOutService {
     public List<LocalDate> getDatesFromModal(String datesInput) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("M/d");
         LocalDateTime now = LocalDateTime.now(ZoneId.of(guildConfig.getTimezone()));
+        List<LocalDate> dateList = new ArrayList<>();
 
-        return Arrays.stream(datesInput.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(s -> parseDate(s, formatter, now.getYear()))
-                .toList();
+        for(String date: datesInput.split(",")) {
+            String trimmed = date.trim();
+            if(trimmed.isEmpty()) {
+                continue;
+            }
+            try {
+                LocalDate formatedDate = parseDate(trimmed,formatter,now.getYear());
+                dateList.add(formatedDate);
+            }
+            catch (DateTimeException e) {
+                throw new IllegalArgumentException("Invalid date format: \""
+                        + trimmed + "\".\n"
+                        + "Format should be: M/D separated by commas (spaces are ignored).\n"
+                        + "Example: 6/7, 4/20,6/9,1/1");
+            }
+
+        }
+        if(dateList.isEmpty()) {
+            throw new IllegalArgumentException("No valid dates entered.");
+        }
+
+        return dateList;
     }
 
     public LocalDate getLastRaidDay() {
