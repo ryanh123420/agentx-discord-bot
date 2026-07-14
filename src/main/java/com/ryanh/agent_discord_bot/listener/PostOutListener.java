@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -65,15 +66,9 @@ public class PostOutListener extends ListenerAdapter {
                         .queue();
             }
             else {
-                List<String> response = postOutService.printListOfPostOuts(postOutList);
-                StringBuilder stringBuilder = new StringBuilder();
-                for(String s: response) {
-                    stringBuilder.append(s).append("\n");
-                }
+                MessageEmbed response = postOutService.viewPostOuts(event.getUser().getId());
 
-                event.replyEmbeds(EmbedUtility.info("View your Post Outs",
-                                        "Here's the list of your post out dates: \n" + stringBuilder)
-                                .build())
+                event.replyEmbeds(response)
                         .setEphemeral(true)
                         .queue();
             }
@@ -177,10 +172,10 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-create-confirm")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
-            String response = postOutService.insertPostOut(event.getUser().getId(),
+            MessageEmbed response = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.getDatesFromSelect(confirmedDays));
 
-            event.editMessageEmbeds(EmbedUtility.confirm("Create a Post Out", response).build())
+            event.editMessageEmbeds(response)
                     .setComponents()
                     .queue();
         }
@@ -208,10 +203,10 @@ public class PostOutListener extends ListenerAdapter {
             String dateInput = event.getValue("dateInput").getAsString();
 
             try {
-                String response = postOutService.insertPostOut(event.getUser().getId(),
+                MessageEmbed response = postOutService.insertPostOut(event.getUser().getId(),
                         postOutService.getDatesFromModal(dateInput));
 
-                event.editMessageEmbeds(EmbedUtility.confirm("Create a Post Out", response).build())
+                event.editMessageEmbeds(response)
                         .setComponents()
                         .queue();
             }

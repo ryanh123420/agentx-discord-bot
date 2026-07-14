@@ -5,6 +5,7 @@ import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.repository.PostOutRepository;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -33,16 +34,31 @@ public class PostOutService {
 
     public record RaidDay(String label, String value, LocalDate date) {}
 
-    public String insertPostOut(String discordId, List<LocalDate> dateList) {
-
+    public MessageEmbed insertPostOut(String discordId, List<LocalDate> dateList) {
+        List<String> added = new ArrayList<>();
+        List<String> duplicates = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
         for(LocalDate date: dateList) {
-            PostOut postOut = new PostOut(discordId, date, now, now);
-            postOutRepository.save(postOut);
+            if(postOutRepository.existsByDiscordIdAndPostDate(discordId, date)) {
+                duplicates.add(formatDate(date));
+            }
+            else {
+                PostOut postOut = new PostOut(discordId, date, now, now);
+                postOutRepository.save(postOut);
+                added.add(formatDate(date));
+            }
         }
 
-        return "Post out added!!!!!";
+        EmbedBuilder embed = EmbedUtility.confirm("Create a Post Out", "Post out results:");
+        if(!added.isEmpty()) {
+            embed.addField("🗓️ Added:", String.join("\n", added), true);
+        }
+        if (!duplicates.isEmpty()) {
+            embed.addField("⚠️ Already exists:", String.join("\n", duplicates), true);
+        }
+
+        return embed.build();
     }
 
     public String deletePostOut(String discordId, List<String> postOutList) {
@@ -56,6 +72,39 @@ public class PostOutService {
         }
 
         return "Post out deleted!!!!";
+    }
+
+    public MessageEmbed viewPostOuts(String discordId) {
+        List<String> thisWeek = new ArrayList<>();
+        List<String> futureWeek = new ArrayList<>();
+
+        for(PostOut postOut: getUsersPostOuts(discordId)) {
+
+            System.out.println(getReset());
+            if(postOut.getPostDate().isBefore(getReset().plusWeeks(1))) {
+                thisWeek.add(formatDate(postOut));
+            }
+            else {
+                futureWeek.add(formatDate(postOut));
+            }
+        }
+
+        EmbedBuilder embed = EmbedUtility.info("View Post Outs", "Here's a list of your post outs:");
+
+        if(!thisWeek.isEmpty()) {
+            embed.addField("🗓️ This Week:", String.join("\n", thisWeek), true);
+        }
+        else {
+            embed.addField("🗓️ This Week:", "None", true);
+        }
+        if (!futureWeek.isEmpty()) {
+            embed.addField("🗓️ Later Weeks:", String.join("\n", futureWeek), true);
+        }
+        else {
+            embed.addField("🗓️ Later Weeks:", "None", true);
+        }
+
+        return embed.build();
     }
 
     public LocalDate getReset() {
@@ -209,8 +258,13 @@ public class PostOutService {
     }
 
     private String formatDate(PostOut postOut) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE M/d/yyyy");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
         return postOut.getPostDate().format(formatter);
+    }
+
+    private String formatDate(LocalDate postDate) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
+        return postDate.format(formatter);
     }
 
     @Scheduled(cron = "${guild.notification-schedule}", zone = "${guild.timezone}")

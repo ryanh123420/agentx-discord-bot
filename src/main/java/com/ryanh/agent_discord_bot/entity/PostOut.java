@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "postout")
+@Table(name = "postout", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"discord_id", "post_date"})
+})
 public class PostOut {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
