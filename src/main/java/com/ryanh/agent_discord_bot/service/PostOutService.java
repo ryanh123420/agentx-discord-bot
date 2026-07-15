@@ -298,6 +298,12 @@ public class PostOutService {
         notificationService.sendPostOutReport(postOutListThisWeek, postOutListNextWeek);
     }
 
+    @Scheduled(cron = "0 0 0 * * *", zone = "${guild.timezone}")
+    public void cleanPostOuts() {
+        LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
+        postOutRepository.deleteByPostDateBefore(now);
+    }
+
     public void newPostOutNotification() {
 
     }
