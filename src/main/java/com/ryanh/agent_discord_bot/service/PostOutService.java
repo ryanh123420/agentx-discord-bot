@@ -61,17 +61,33 @@ public class PostOutService {
         return embed.build();
     }
 
-    public String deletePostOut(String discordId, List<String> postOutList) {
-        for (String id: postOutList) {
+    public MessageEmbed deletePostOut(String discordId, List<String> deleteList) {
+        List<PostOut> deleted = new ArrayList<>();
+
+        for (String id: deleteList) {
             PostOut postOut = postOutRepository.findById(Integer.parseInt(id))
                     .orElse(null);
 
             if(postOut != null && postOut.getDiscordId().equals(discordId)) {
                 postOutRepository.delete(postOut);
+                deleted.add(postOut);
             }
         }
+        EmbedBuilder embed = EmbedUtility.confirm("Delete Post Outs", "Delete results:");
+        List<PostOut> remaining = getUsersPostOuts(discordId);
 
-        return "Post out deleted!!!!";
+        List<String> test = printListOfPostOuts(deleted);
+
+        embed.addField("🗓️ Deleted:", String.join("\n", test), true);
+        if(remaining.isEmpty()) {
+            embed.addField("🗓️ Remaining:", "None", true);
+        }
+        else {
+            embed.addField("🗓️ Remaining:",
+                    String.join("\n", printListOfPostOuts(remaining)), true);
+        }
+
+        return embed.build();
     }
 
     public MessageEmbed viewPostOuts(String discordId) {
@@ -266,6 +282,7 @@ public class PostOutService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
         return postDate.format(formatter);
     }
+
 
     @Scheduled(cron = "${guild.notification-schedule}", zone = "${guild.timezone}")
     public void weeklyPostOutReminder() {

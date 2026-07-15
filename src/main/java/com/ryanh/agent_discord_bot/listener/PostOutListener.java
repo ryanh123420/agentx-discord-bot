@@ -188,10 +188,10 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-delete-confirm")) {
             List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
 
-            String response = postOutService.deletePostOut(event.getUser().getId(),
+            MessageEmbed response = postOutService.deletePostOut(event.getUser().getId(),
                     confirmedDeleteIds);
 
-            event.editMessageEmbeds(EmbedUtility.confirm("Delete a Post Out", response).build())
+            event.editMessageEmbeds(response)
                     .setComponents()
                     .queue();
         }
