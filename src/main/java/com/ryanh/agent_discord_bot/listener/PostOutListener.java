@@ -43,8 +43,8 @@ public class PostOutListener extends ListenerAdapter {
                     .addComponents(
                             ActionRow.of(
                                     Button.primary("postout-thisreset", "This Week, Week of "
-                                            + postOutService.getReset().getMonthValue() + "/"
-                                            + postOutService.getReset().getDayOfMonth()),
+                                            + postOutService.getNextRaidWeekStartDate().getMonthValue() + "/"
+                                            + postOutService.getNextRaidWeekStartDate().getDayOfMonth()),
                                     Button.primary("postout-futurereset", "Later Week")
                             ),
                             ActionRow.of(
@@ -67,7 +67,6 @@ public class PostOutListener extends ListenerAdapter {
             }
             else {
                 MessageEmbed response = postOutService.viewPostOuts(event.getUser().getId());
-
                 event.replyEmbeds(response)
                         .setEphemeral(true)
                         .queue();
@@ -116,10 +115,12 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        //User selected options on the day selection dropdown for "This Reset".
         if(event.getComponentId().equals("postout-thisreset-selectdays")) {
             daySelections.put(event.getUser().getId(), event.getValues());
             event.deferEdit().queue();
         }
+        //User selected options in the delete command dropdown.
         else if(event.getComponentId().equals("postout-selectdelete")) {
             deleteSelections.put(event.getUser().getId(), event.getValues());
             event.deferEdit().queue();
@@ -129,6 +130,7 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
+        //User clicked "This Reset" button on create command.
         if(event.getComponentId().equals("postout-thisreset")) {
             StringSelectMenu.Builder menu = StringSelectMenu.create("postout-thisreset-selectdays")
                     .setMinValues(1);
@@ -151,6 +153,7 @@ public class PostOutListener extends ListenerAdapter {
                             )
                     ).queue();
         }
+        //User clicked "Future Reset" button on create command.
         else if (event.getComponentId().equals("postout-futurereset")) {
             TextInput dateInput = TextInput.create("dateInput", TextInputStyle.SHORT)
                     .setPlaceholder("Example format: 4/20, 6/7, 6/9")
@@ -163,28 +166,32 @@ public class PostOutListener extends ListenerAdapter {
 
             event.replyModal(modal).queue();
         }
+        //User clicked cancel button on create command.
         else if(event.getComponentId().equals("postout-create-cancel")) {
             daySelections.remove(event.getUser().getId());
             event.editMessageEmbeds(EmbedUtility.error("Create a Post Out",
                             "Post Out canceled").build())
                     .setComponents().queue();
         }
+        //User clicked confirm button on create command.
         else if(event.getComponentId().equals("postout-create-confirm")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
             MessageEmbed response = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.getDatesFromSelect(confirmedDays));
+                    postOutService.convertDatesFromSelectMenu(confirmedDays));
 
             event.editMessageEmbeds(response)
                     .setComponents()
                     .queue();
         }
+        //User clicked cancel button on the delete command.
         else if(event.getComponentId().equals("postout-delete-cancel")) {
             deleteSelections.remove(event.getUser().getId());
             event.editMessageEmbeds(EmbedUtility.error("Delete a Post Out",
                             "Delete canceled").build())
                     .setComponents().queue();
         }
+        //User clicked confirm button on the delete command.
         else if(event.getComponentId().equals("postout-delete-confirm")) {
             List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
 
@@ -199,12 +206,13 @@ public class PostOutListener extends ListenerAdapter {
 
     @Override
     public void onModalInteraction(ModalInteractionEvent event) {
+        //User clicked submit on "Future Reset" modal.
         if(event.getModalId().equals("postout-futurereset-datemodal")) {
             String dateInput = event.getValue("dateInput").getAsString();
 
             try {
                 MessageEmbed response = postOutService.insertPostOut(event.getUser().getId(),
-                        postOutService.getDatesFromModal(dateInput));
+                        postOutService.convertDatesFromModal(dateInput));
 
                 event.editMessageEmbeds(response)
                         .setComponents()

@@ -13,7 +13,6 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -32,6 +31,7 @@ public class PostOutService {
         this.guildConfig = guildConfig;
     }
 
+    //Used to help build menu options in the listener
     public record RaidDay(String label, String value, LocalDate date) {}
 
     public MessageEmbed insertPostOut(String discordId, List<LocalDate> dateList) {
@@ -44,7 +44,7 @@ public class PostOutService {
                 duplicates.add(formatDate(date));
             }
             else {
-                PostOut postOut = new PostOut(discordId, date, now, now);
+                PostOut postOut = new PostOut(discordId, date, now);
                 postOutRepository.save(postOut);
                 added.add(formatDate(date));
             }
@@ -95,9 +95,7 @@ public class PostOutService {
         List<String> futureWeek = new ArrayList<>();
 
         for(PostOut postOut: getUsersPostOuts(discordId)) {
-
-            System.out.println(getReset());
-            if(postOut.getPostDate().isBefore(getReset().plusWeeks(1))) {
+            if(postOut.getPostDate().isBefore(getNextRaidWeekStartDate().plusWeeks(1))) {
                 thisWeek.add(formatDate(postOut));
             }
             else {
@@ -123,7 +121,12 @@ public class PostOutService {
         return embed.build();
     }
 
-    public LocalDate getReset() {
+    /**
+     * Returns the start date of the next week, based off if the last raid day and the raid start time
+     * has passed for the week.
+     * @return Start date of the raid week.
+     */
+    public LocalDate getNextRaidWeekStartDate() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of(guildConfig.getTimezone()));
         List<DayOfWeek> raidDayList = guildConfig.getRaidDays();
         int lastDay = 0;
@@ -143,19 +146,40 @@ public class PostOutService {
     }
 
     /**
-     * Return a days value based off the start of the week being on the weekly reset
+     * Maps the return value of DayOfWeek.getValue() around the daily reset for a region rather than Monday through
+     * Sunday. So for US Tuesday = 1 and Monday = 7, EU Wednesday = 1, Tuesday = 7, etc
      * @param day A day Monday through Sunday
-     * @return The days value based of the weekly reset (for US weekly reset, Tues = 1 and Mon = 7)
+     * @return The days value based of the weekly reset
      */
     private int daysSinceReset(DayOfWeek day) {
         return (day.getValue() - guildConfig.getResetDay().getValue() + 7) % 7 + 1;
     }
 
     /**
-     * Checks if the input would be within a valid timeframe to add as a menu option in the PostOutListener
-     * @param raidDay Current raid day
-     * @return True if before the start time of a raid day, false if after raid day has passed that reset
+     * Provides a list of valid menu options for the "This Reset" drop down by checking if it's past a raid days date
+     * and start time.
+     * @return List of valid RaidDays to add as menu options
      */
+    public List<RaidDay> validMenuOptions() {
+        LocalDate reset = getNextRaidWeekStartDate();
+        List<RaidDay> raidDaysList = new ArrayList<>();
+
+        for(int i = 0; i < guildConfig.getRaidDays().size(); i++) {
+            DayOfWeek day = guildConfig.getRaidDays().get(i);
+
+            if(isValidMenuOption(day)) {
+                int offset = daysSinceReset(day) - 1;
+
+                raidDaysList.add(new RaidDay(day.name().charAt(0)
+                        + day.name().substring(1).toLowerCase(),
+                        day.name().toLowerCase(),
+                        reset.plusDays(offset)));
+            }
+        }
+
+        return raidDaysList;
+    }
+
     private boolean isValidMenuOption(DayOfWeek raidDay) {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of(guildConfig.getTimezone()));
         int lastDay = guildConfig.getRaidDays().stream()
@@ -176,31 +200,8 @@ public class PostOutService {
         return true;
     }
 
-    /**
-     * Provides a list of valid menu options for the Select Reset option on the PostOutListener
-     * @return List of valid RaidDays to add as menu options
-     */
-    public List<RaidDay> validMenuOptions() {
-        LocalDate reset = getReset();
-        List<RaidDay> raidDaysList = new ArrayList<>();
 
-        for(int i = 0; i < guildConfig.getRaidDays().size(); i++) {
-            DayOfWeek day = guildConfig.getRaidDays().get(i);
-
-            if(isValidMenuOption(day)) {
-                int offset = daysSinceReset(day) - 1;
-
-                raidDaysList.add(new RaidDay(day.name().charAt(0)
-                        + day.name().substring(1).toLowerCase(),
-                        day.name().toLowerCase(),
-                        reset.plusDays(offset)));
-            }
-        }
-
-        return raidDaysList;
-    }
-
-    public List<LocalDate> getDatesFromSelect(List<String> confirmedDays) {
+    public List<LocalDate> convertDatesFromSelectMenu(List<String> confirmedDays) {
         LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
 
         return confirmedDays.stream()
@@ -209,7 +210,7 @@ public class PostOutService {
                 .toList();
     }
 
-    public List<LocalDate> getDatesFromModal(String datesInput) {
+    public List<LocalDate> convertDatesFromModal(String datesInput) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("M/d");
         LocalDateTime now = LocalDateTime.now(ZoneId.of(guildConfig.getTimezone()));
         List<LocalDate> dateList = new ArrayList<>();
@@ -284,8 +285,11 @@ public class PostOutService {
     }
 
 
+    /**
+     * Sends all post outs for the current and next raid reset.
+     */
     @Scheduled(cron = "${guild.notification-schedule}", zone = "${guild.timezone}")
-    public void weeklyPostOutReminder() {
+    public void postOutReminder() {
         LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
         if(!now.getDayOfWeek().equals(guildConfig.getResetDay())) {
             return;
@@ -298,14 +302,13 @@ public class PostOutService {
         notificationService.sendPostOutReport(postOutListThisWeek, postOutListNextWeek);
     }
 
+    /**
+     * Deletes post outs past the current date at midnight each day.
+     */
     @Scheduled(cron = "0 0 0 * * *", zone = "${guild.timezone}")
     public void cleanPostOuts() {
         LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
         postOutRepository.deleteByPostDateBefore(now);
-    }
-
-    public void newPostOutNotification() {
-
     }
 
 }

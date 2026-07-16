@@ -1,10 +1,8 @@
 package com.ryanh.agent_discord_bot.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,16 +24,13 @@ public class PostOut {
 
     private LocalDateTime datePosted;
 
-    private LocalDateTime dateUpdated;
-
     public PostOut() {
     }
 
-    public PostOut(String discordId, LocalDate postDate, LocalDateTime datePosted, LocalDateTime dateUpdated) {
+    public PostOut(String discordId, LocalDate postDate, LocalDateTime datePosted) {
         this.discordId = discordId;
         this.postDate = postDate;
         this.datePosted = datePosted;
-        this.dateUpdated = dateUpdated;
     }
 
     public Integer getId() {
@@ -65,15 +60,4 @@ public class PostOut {
     public void setDatePosted(LocalDateTime datePosted) {
         this.datePosted = datePosted;
     }
-
-    public LocalDateTime getDateUpdated() {
-        return dateUpdated;
-    }
-
-    public void setDateUpdated(LocalDateTime dateUpdated) {
-        this.dateUpdated = dateUpdated;
-    }
-
-
-
 }

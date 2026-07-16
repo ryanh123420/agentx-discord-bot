@@ -25,15 +25,19 @@ public class NotificationService {
         jda.getTextChannelById(channelId).sendMessageEmbeds(embed).queue();
     }
 
+    public void sendPostOutCreation(List<PostOut> postOutList) {
+
+    }
+
     public void sendPostOutReport(List<PostOut> thisWeek, List<PostOut> nextWeek) {
-        String thisWeekText = formatPostOutList(thisWeek);
-        String nextWeekText = formatPostOutList(nextWeek);
+        String thisWeekText = formatPostOutReport(thisWeek);
+        String nextWeekText = formatPostOutReport(nextWeek);
 
         EmbedBuilder builder = EmbedUtility.postOutWeeklyNotification(thisWeekText, nextWeekText);
         sendEmbedToChannel(builder.build(), guildConfig.getOfficerChannelId());
     }
 
-    private String formatPostOutList(List<PostOut> postOutList) {
+    private String formatPostOutReport(List<PostOut> postOutList) {
         if(postOutList.isEmpty()) {
             return "⭐ There are no post outs! ⭐";
         }

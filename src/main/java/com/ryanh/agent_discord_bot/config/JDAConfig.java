@@ -2,7 +2,7 @@ package com.ryanh.agent_discord_bot.config;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
@@ -10,8 +10,6 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 /**
  * Config class for JDA
@@ -48,7 +46,7 @@ public class JDAConfig {
                                 .addSubcommands(
                                         new SubcommandData("update", "Update users on thread"),
                                         new SubcommandData("settings", "Set which threads are managed")
-                                )
+                                ).setDefaultPermissions(DefaultMemberPermissions.DISABLED)
         ).queue();
 
         return jda;
