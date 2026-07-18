@@ -48,6 +48,10 @@ public class PostOutService {
             }
         }
 
+        if (!added.isEmpty()) {
+            notificationService.sendPostOutCreation(discordId, added);
+        }
+
         return Map.of("added", added, "duplicates", duplicates);
     }
 

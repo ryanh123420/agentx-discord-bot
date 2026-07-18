@@ -25,8 +25,12 @@ public class NotificationService {
         jda.getTextChannelById(channelId).sendMessageEmbeds(embed).queue();
     }
 
-    public void sendPostOutCreation(List<PostOut> postOutList) {
+    public void sendPostOutCreation(String discordId, List<String> postOutList) {
+        EmbedBuilder embed = EmbedUtility.info("Post Out created",
+                "<@" + discordId + "> just created a post out:");
+        embed.addField("🗓️ Added:", String.join("\n", postOutList),true);
 
+        sendEmbedToChannel(embed.build(), guildConfig.getOfficerChannelId());
     }
 
     public void sendPostOutReport(List<PostOut> thisWeek, List<PostOut> nextWeek) {
