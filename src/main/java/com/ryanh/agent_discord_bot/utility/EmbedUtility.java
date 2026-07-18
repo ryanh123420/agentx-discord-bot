@@ -4,13 +4,14 @@ import net.dv8tion.jda.api.EmbedBuilder;
 
 import java.awt.*;
 import java.time.Instant;
+import java.util.List;
 
 public class EmbedUtility {
 
     public static EmbedBuilder confirm(String title, String description) {
         return new EmbedBuilder()
                 .setColor(Color.decode("#45cf29"))
-                .setTitle(title)
+                .setAuthor(title)
                 .setDescription("✅ " + description)
                 .setTimestamp(Instant.now());
     }
@@ -18,7 +19,7 @@ public class EmbedUtility {
     public static EmbedBuilder error(String title, String description) {
         return new EmbedBuilder()
                 .setColor(Color.decode("#c22727"))
-                .setTitle(title)
+                .setAuthor(title)
                 .setDescription("❌ " + description)
                 .setTimestamp(Instant.now());
     }
@@ -26,11 +27,12 @@ public class EmbedUtility {
     public static EmbedBuilder info(String title, String description) {
         return new EmbedBuilder()
                 .setColor(Color.decode("#3057cf"))
-                .setTitle(title)
+                .setAuthor(title)
                 .setDescription("📋 " + description)
                 .setTimestamp(Instant.now());
     }
 
+    //Move to NotificationService?
     public static EmbedBuilder postOutWeeklyNotification(String thisWeek, String nextWeek) {
         return new EmbedBuilder()
                 .setColor(Color.decode("#620cb3"))

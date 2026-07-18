@@ -3,13 +3,13 @@ package com.ryanh.agent_discord_bot.listener;
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.PostOutService;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -66,8 +66,24 @@ public class PostOutListener extends ListenerAdapter {
                         .queue();
             }
             else {
-                MessageEmbed response = postOutService.viewPostOuts(event.getUser().getId());
-                event.replyEmbeds(response)
+                Map<String, List<String>> result = postOutService.viewPostOuts(event.getUser().getId());
+
+                EmbedBuilder embed = EmbedUtility.info("View Post Outs", "Here's a list of your post outs:");
+
+                if(!result.get("thisweek").isEmpty()) {
+                    embed.addField("🗓️ This Week:", String.join("\n", result.get("thisweek")), true);
+                }
+                else {
+                    embed.addField("🗓️ This Week:", "None", true);
+                }
+                if (!result.get("futureweek").isEmpty()) {
+                    embed.addField("🗓️ Later Weeks:", String.join("\n", result.get("futureweek")), true);
+                }
+                else {
+                    embed.addField("🗓️ Later Weeks:", "None", true);
+                }
+
+                event.replyEmbeds(embed.build())
                         .setEphemeral(true)
                         .queue();
             }
@@ -177,10 +193,18 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-create-confirm")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
-            MessageEmbed response = postOutService.insertPostOut(event.getUser().getId(),
+            Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.convertDatesFromSelectMenu(confirmedDays));
 
-            event.editMessageEmbeds(response)
+            EmbedBuilder embed = EmbedUtility.confirm("Create a Post Out", "Post out results:");
+            if (!result.get("added").isEmpty()) {
+                embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
+            }
+            if (!result.get("duplicates").isEmpty()) {
+                embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
+            }
+
+            event.editMessageEmbeds(embed.build())
                     .setComponents()
                     .queue();
         }
@@ -195,10 +219,21 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-delete-confirm")) {
             List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
 
-            MessageEmbed response = postOutService.deletePostOut(event.getUser().getId(),
+            Map<String, List<String>> result = postOutService.deletePostOut(event.getUser().getId(),
                     confirmedDeleteIds);
 
-            event.editMessageEmbeds(response)
+            EmbedBuilder embed = EmbedUtility.confirm("Delete Post Outs", "Results");
+
+            embed.addField("🗓️ Deleted:", String.join("\n", result.get("deleted")), true);
+            if(result.get("remaining").isEmpty()) {
+                embed.addField("🗓️ Remaining:", "None", true);
+            }
+            else {
+                embed.addField("🗓️ Remaining:",
+                        String.join("\n", result.get("remaining")), true);
+            }
+
+            event.editMessageEmbeds(embed.build())
                     .setComponents()
                     .queue();
         }
@@ -211,10 +246,18 @@ public class PostOutListener extends ListenerAdapter {
             String dateInput = event.getValue("dateInput").getAsString();
 
             try {
-                MessageEmbed response = postOutService.insertPostOut(event.getUser().getId(),
+                Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
                         postOutService.convertDatesFromModal(dateInput));
 
-                event.editMessageEmbeds(response)
+                EmbedBuilder embed = EmbedUtility.confirm("Create a Post Out", "Post out results:");
+                if (!result.get("added").isEmpty()) {
+                    embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
+                }
+                if (!result.get("duplicates").isEmpty()) {
+                    embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
+                }
+
+                event.editMessageEmbeds(embed.build())
                         .setComponents()
                         .queue();
             }
