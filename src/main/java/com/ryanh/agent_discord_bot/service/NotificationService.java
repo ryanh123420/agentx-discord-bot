@@ -33,8 +33,12 @@ public class NotificationService {
         String thisWeekText = formatPostOutReport(thisWeek);
         String nextWeekText = formatPostOutReport(nextWeek);
 
-        EmbedBuilder builder = EmbedUtility.postOutWeeklyNotification(thisWeekText, nextWeekText);
-        sendEmbedToChannel(builder.build(), guildConfig.getOfficerChannelId());
+        EmbedBuilder embed = EmbedUtility.info("🗓️ Weekly Post Out Report",
+                "The following players have made a post out for this week and next week:")
+                .addField("This Week:", thisWeekText, true)
+                .addField("Next Week:", nextWeekText, true);
+
+        sendEmbedToChannel(embed.build(), guildConfig.getOfficerChannelId());
     }
 
     private String formatPostOutReport(List<PostOut> postOutList) {

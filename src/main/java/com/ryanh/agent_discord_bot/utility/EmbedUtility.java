@@ -4,7 +4,6 @@ import net.dv8tion.jda.api.EmbedBuilder;
 
 import java.awt.*;
 import java.time.Instant;
-import java.util.List;
 
 public class EmbedUtility {
 
@@ -29,17 +28,6 @@ public class EmbedUtility {
                 .setColor(Color.decode("#3057cf"))
                 .setAuthor(title)
                 .setDescription("📋 " + description)
-                .setTimestamp(Instant.now());
-    }
-
-    //Move to NotificationService?
-    public static EmbedBuilder postOutWeeklyNotification(String thisWeek, String nextWeek) {
-        return new EmbedBuilder()
-                .setColor(Color.decode("#620cb3"))
-                .setTitle("🗓️ Weekly Post Out Report")
-                .setDescription("The following players have made a post out for this week and next week:")
-                .addField("This Week:", thisWeek, true)
-                .addField("Next Week:", nextWeek, true)
                 .setTimestamp(Instant.now());
     }
 }
