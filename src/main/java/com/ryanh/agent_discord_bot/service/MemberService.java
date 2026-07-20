@@ -1,33 +1,33 @@
 package com.ryanh.agent_discord_bot.service;
 
+import com.ryanh.agent_discord_bot.entity.Member;
 import com.ryanh.agent_discord_bot.entity.RaidCharacter;
-import com.ryanh.agent_discord_bot.entity.User;
 import com.ryanh.agent_discord_bot.model.WowUtilsRoster;
 import com.ryanh.agent_discord_bot.repository.RaidCharacterRepository;
-import com.ryanh.agent_discord_bot.repository.UserRepository;
+import com.ryanh.agent_discord_bot.repository.MemberRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
-public class UserService {
-    private final UserRepository userRepository;
+public class MemberService {
+    private final MemberRepository memberRepository;
     private final RaidCharacterRepository raidCharacterRepository;
     private final WowUtilsClient wowUtilsClient;
 
-    public UserService(UserRepository userRepository,
-                       RaidCharacterRepository raidCharacterRepository,
-                       WowUtilsClient wowUtilsClient) {
-        this.userRepository = userRepository;
+    public MemberService(MemberRepository memberRepository,
+                         RaidCharacterRepository raidCharacterRepository,
+                         WowUtilsClient wowUtilsClient) {
+        this.memberRepository = memberRepository;
         this.raidCharacterRepository = raidCharacterRepository;
         this.wowUtilsClient = wowUtilsClient;
     }
 
     public String insertUser(String battleTag, String discordId) {
-        if(userRepository.findByDiscordId(discordId).isPresent()) {
+        if(memberRepository.findByDiscordId(discordId).isPresent()) {
             return "You are already registered! Use /unregister if you need to setup a different BattleTag.";
         }
-        if(userRepository.findByBattleTag(battleTag).isPresent()) {
+        if(memberRepository.findByBattleTag(battleTag).isPresent()) {
             return "This BattleTag is already registered to a different user.";
         }
 
@@ -43,14 +43,14 @@ public class UserService {
             return "BattleTag not found on WoWUtils.";
         }
 
-        User user = new User();
-        user.setBattleTag(battleTag);
-        user.setDiscordId(discordId);
-        userRepository.save(user);
+        Member raider = new Member();
+        raider.setBattleTag(battleTag);
+        raider.setDiscordId(discordId);
+        memberRepository.save(raider);
 
         WowUtilsRoster.Member member = match.get();
         for(WowUtilsRoster.Character c: member.characters()) {
-            RaidCharacter raidChar = new RaidCharacter(c.name(), user, c.charClass(), c.spec());
+            RaidCharacter raidChar = new RaidCharacter(c.name(), raider, c.charClass(), c.spec());
             raidCharacterRepository.save(raidChar);
         }
 
@@ -66,12 +66,12 @@ public class UserService {
     }
 
     public boolean checkIfRegistered(String discordId) {
-        return userRepository.findByDiscordId(discordId).isPresent();
+        return memberRepository.findByDiscordId(discordId).isPresent();
     }
 
     public String removeUser(String discordId) {
-        Optional<User> user = userRepository.findByDiscordId(discordId);
-        userRepository.delete(user.get());
+        Optional<Member> user = memberRepository.findByDiscordId(discordId);
+        memberRepository.delete(user.get());
         return "BattleTag and characters have been unregistered.";
     }
 }

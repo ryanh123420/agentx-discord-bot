@@ -1,6 +1,6 @@
 package com.ryanh.agent_discord_bot.listener;
 
-import com.ryanh.agent_discord_bot.service.UserService;
+import com.ryanh.agent_discord_bot.service.MemberService;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -11,17 +11,17 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserUnregisterListener extends ListenerAdapter {
-    private final UserService userService;
+    private final MemberService memberService;
 
-    public UserUnregisterListener(UserService userService) {
-        this.userService = userService;
+    public UserUnregisterListener(MemberService memberService) {
+        this.memberService = memberService;
     }
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if(event.getName().equals("unregister")) {
-            if(userService.checkIfRegistered(event.getUser().getId())) {
-                event.replyEmbeds(EmbedUtility.info("Unregister BattleTag",
+            if(memberService.checkIfRegistered(event.getUser().getId())) {
+                event.replyEmbeds(EmbedUtility.info(event.getUser(),
                                 "Are you sure you want to unregister your BattleTag?")
                                 .build())
                         .addComponents(ActionRow.of(
@@ -31,7 +31,7 @@ public class UserUnregisterListener extends ListenerAdapter {
                         .queue();
             }
             else {
-                event.replyEmbeds(EmbedUtility.error("Unregister BattleTag",
+                event.replyEmbeds(EmbedUtility.error(event.getUser(),
                         "You aren't registered!")
                                 .build())
                         .setEphemeral(true)
@@ -43,14 +43,14 @@ public class UserUnregisterListener extends ListenerAdapter {
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
         if(event.getComponentId().equals("unregister-confirm")) {
-            String response = userService.removeUser(event.getUser().getId());
-            event.replyEmbeds(EmbedUtility.confirm("Unregister BattleTag", response)
+            String response = memberService.removeUser(event.getUser().getId());
+            event.replyEmbeds(EmbedUtility.confirm(event.getUser(), response)
                             .build())
                     .setEphemeral(true).
                     queue();
         }
         else if(event.getComponentId().equals("unregister-cancel")) {
-            event.replyEmbeds(EmbedUtility.error("Unregister BattleTag",
+            event.replyEmbeds(EmbedUtility.error(event.getUser(),
                             "BattleTag registration cancelled")
                             .build())
                     .setEphemeral(true)

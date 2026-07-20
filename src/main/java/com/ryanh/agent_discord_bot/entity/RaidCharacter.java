@@ -13,8 +13,8 @@ public class RaidCharacter {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @JoinColumn(name = "member_id")
+    private Member member;
 
     @NotBlank
     @Column(unique = true)
@@ -29,9 +29,9 @@ public class RaidCharacter {
     public RaidCharacter() {
     }
 
-    public RaidCharacter(String name, User user,String charClass, String spec) {
+    public RaidCharacter(String name, Member member, String charClass, String spec) {
         this.name = name;
-        this.user = user;
+        this.member = member;
         this.charClass = charClass;
         this.spec = spec;
     }

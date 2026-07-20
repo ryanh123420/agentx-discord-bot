@@ -37,14 +37,14 @@ public class PostOutListener extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         //Create command
         if(event.getName().equals("postout") && "create".equals(event.getSubcommandName())) {
-            event.replyEmbeds(EmbedUtility.info("Create a Post Out",
+            event.replyEmbeds(EmbedUtility.info(event.getUser(),
                                     "When do you need to post out?")
                             .build())
                     .addComponents(
                             ActionRow.of(
-                                    Button.primary("postout-thisreset", "This Week, Week of "
+                                    Button.primary("postout-thisreset", "This Week ("
                                             + postOutService.getNextRaidWeekStartDate().getMonthValue() + "/"
-                                            + postOutService.getNextRaidWeekStartDate().getDayOfMonth()),
+                                            + postOutService.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
                                     Button.primary("postout-futurereset", "Later Week")
                             ),
                             ActionRow.of(
@@ -60,7 +60,7 @@ public class PostOutListener extends ListenerAdapter {
 
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
             if(postOutList.isEmpty()) {
-                event.replyEmbeds(EmbedUtility.error("View your Post Outs",
+                event.replyEmbeds(EmbedUtility.error(event.getUser(),
                         "You don't have any post outs created")
                         .build())
                         .queue();
@@ -68,7 +68,7 @@ public class PostOutListener extends ListenerAdapter {
             else {
                 Map<String, List<String>> result = postOutService.viewPostOuts(event.getUser().getId());
 
-                EmbedBuilder embed = EmbedUtility.info("View Post Outs", "Here's a list of your post outs:");
+                EmbedBuilder embed = EmbedUtility.info(event.getUser(), "Here's a list of your post outs:");
 
                 if(!result.get("thisweek").isEmpty()) {
                     embed.addField("🗓️ This Week:", String.join("\n", result.get("thisweek")), true);
@@ -93,7 +93,7 @@ public class PostOutListener extends ListenerAdapter {
         else if (event.getName().equals("postout") && "delete".equals(event.getSubcommandName())) {
             List<PostOut> postOutList = postOutService.getUsersPostOuts(event.getUser().getId());
             if(postOutList.isEmpty()) {
-                event.replyEmbeds(EmbedUtility.error("Delete Post Outs",
+                event.replyEmbeds(EmbedUtility.error(event.getUser(),
                         "You don't have any post outs created")
                         .build())
                         .queue();
@@ -110,7 +110,7 @@ public class PostOutListener extends ListenerAdapter {
                 }
                 menu.setMaxValues(menu.getOptions().size());
 
-                event.replyEmbeds(EmbedUtility.info("Delete Post Outs",
+                event.replyEmbeds(EmbedUtility.info(event.getUser(),
                                 "Select Post Outs to delete")
                                 .build())
                         .setComponents(
@@ -157,7 +157,7 @@ public class PostOutListener extends ListenerAdapter {
             }
             menu.setMaxValues(menu.getOptions().size());
 
-            event.editMessageEmbeds(EmbedUtility.info("Create a Post Out",
+            event.editMessageEmbeds(EmbedUtility.info(event.getUser(),
                             "Select which days:").build())
                     .setComponents(
                             ActionRow.of(
@@ -185,7 +185,7 @@ public class PostOutListener extends ListenerAdapter {
         //User clicked cancel button on create command.
         else if(event.getComponentId().equals("postout-create-cancel")) {
             daySelections.remove(event.getUser().getId());
-            event.editMessageEmbeds(EmbedUtility.error("Create a Post Out",
+            event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
                             "Post Out canceled").build())
                     .setComponents().queue();
         }
@@ -196,12 +196,14 @@ public class PostOutListener extends ListenerAdapter {
             Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.convertDatesFromSelectMenu(confirmedDays));
 
-            EmbedBuilder embed = EmbedUtility.confirm("Create a Post Out", "Post out results:");
+            EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
             if (!result.get("added").isEmpty()) {
-                embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
+                embed.addField("✅ Added:", "🗓️ " +
+                        String.join("\n", result.get("added")), true);
             }
             if (!result.get("duplicates").isEmpty()) {
-                embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
+                embed.addField("⚠️ Already exists:", "🗓️ " +
+                        String.join("\n", result.get("duplicates")), true);
             }
 
             event.editMessageEmbeds(embed.build())
@@ -211,8 +213,8 @@ public class PostOutListener extends ListenerAdapter {
         //User clicked cancel button on the delete command.
         else if(event.getComponentId().equals("postout-delete-cancel")) {
             deleteSelections.remove(event.getUser().getId());
-            event.editMessageEmbeds(EmbedUtility.error("Delete a Post Out",
-                            "Delete canceled").build())
+            event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
+                            "❌ Delete canceled").build())
                     .setComponents().queue();
         }
         //User clicked confirm button on the delete command.
@@ -222,7 +224,7 @@ public class PostOutListener extends ListenerAdapter {
             Map<String, List<String>> result = postOutService.deletePostOut(event.getUser().getId(),
                     confirmedDeleteIds);
 
-            EmbedBuilder embed = EmbedUtility.confirm("Delete Post Outs", "Results");
+            EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Results");
 
             embed.addField("🗓️ Deleted:", String.join("\n", result.get("deleted")), true);
             if(result.get("remaining").isEmpty()) {
@@ -249,12 +251,14 @@ public class PostOutListener extends ListenerAdapter {
                 Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
                         postOutService.convertDatesFromModal(dateInput));
 
-                EmbedBuilder embed = EmbedUtility.confirm("Create a Post Out", "Post out results:");
+                EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
                 if (!result.get("added").isEmpty()) {
-                    embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
+                    embed.addField("✅ Added:", "🗓️ " +
+                            String.join("\n", result.get("added")), true);
                 }
                 if (!result.get("duplicates").isEmpty()) {
-                    embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
+                    embed.addField("⚠️ Already exists:", "🗓️ " +
+                            String.join("\n", result.get("duplicates")), true);
                 }
 
                 event.editMessageEmbeds(embed.build())
@@ -262,7 +266,7 @@ public class PostOutListener extends ListenerAdapter {
                         .queue();
             }
             catch (IllegalArgumentException e) {
-                event.editMessageEmbeds(EmbedUtility.error("Create a Post Out", e.getMessage()).build())
+                event.editMessageEmbeds(EmbedUtility.error(event.getUser(), e.getMessage()).build())
                         .queue();
             }
 
