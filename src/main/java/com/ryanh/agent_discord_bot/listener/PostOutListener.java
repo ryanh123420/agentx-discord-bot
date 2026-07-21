@@ -141,7 +141,6 @@ public class PostOutListener extends ListenerAdapter {
         //User selected options on the day selection dropdown for "This Reset".
         if(event.getComponentId().equals("postout-selectdays")) {
             daySelections.put(event.getUser().getId(), event.getValues());
-            System.out.println(daySelections);
             event.deferEdit().queue();
         }
         //User selected options in the delete command dropdown.
@@ -206,10 +205,16 @@ public class PostOutListener extends ListenerAdapter {
                     .setPlaceholder("Example format: 4/20, 6/7, 6/9")
                     .setRequired(true)
                     .build();
+            TextInput noteInput = TextInput.create("noteInput", TextInputStyle.SHORT)
+                    .setPlaceholder("Optional note")
+                    .setRequired(false)
+                    .build();
 
             Modal modal = Modal.create("postout-futurereset-datemodal", "Create a Post Out")
-                    .addComponents(Label.of("Enter month/day, separated by commas", dateInput))
-                    .build();
+                    .addComponents(
+                            Label.of("Enter month/day, separated by commas", dateInput),
+                            Label.of("(Optional) Note", noteInput)
+                    ).build();
 
             event.replyModal(modal).queue();
         }
@@ -222,10 +227,37 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked confirm button on create command.
         else if(event.getComponentId().equals("postout-create-confirm")) {
+            event.editMessageEmbeds(EmbedUtility.info(event.getUser(),
+                                    "(Optional) Do you want to add a note?")
+                            .build())
+                    .setComponents(
+                            ActionRow.of(
+                                    Button.primary("postout-addnote", "Yes"),
+                                    Button.primary("postout-skipnote", "Skip")
+                            )
+                    )
+                    .queue();
+        }
+        //User clicked Add Note button after confirming dates
+        else if (event.getComponentId().equals("postout-addnote")) {
+            TextInput noteInput = TextInput.create("noteInput", TextInputStyle.SHORT)
+                    .setPlaceholder("Leave blank for no note")
+                    .setRequired(false)
+                    .build();
+
+            Modal modal = Modal.create("postout-notemodal", "Add a note")
+                    .addComponents(
+                            Label.of("Note", noteInput)
+                    ).build();
+
+            event.replyModal(modal).queue();
+        }
+        //User clicked Skip Note button after confirming dates
+        else if(event.getComponentId().equals("postout-skipnote")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
             Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.convertDatesFromSelectMenu(confirmedDays));
+                    postOutService.convertDatesFromSelectMenu(confirmedDays), "");
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
             if (!result.get("added").isEmpty()) {
@@ -275,10 +307,11 @@ public class PostOutListener extends ListenerAdapter {
         //User clicked submit on "Future Reset" modal.
         if(event.getModalId().equals("postout-futurereset-datemodal")) {
             String dateInput = event.getValue("dateInput").getAsString();
+            String noteInput = event.getValue("noteInput").getAsString();
 
             try {
                 Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                        postOutService.convertDatesFromModal(dateInput));
+                        postOutService.convertDatesFromModal(dateInput), noteInput);
 
                 EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
                 if (!result.get("added").isEmpty()) {
@@ -297,6 +330,26 @@ public class PostOutListener extends ListenerAdapter {
                         .queue();
             }
 
+        }
+        else if (event.getModalId().equals("postout-notemodal")) {
+            String noteInput = event.getValue("noteInput").getAsString();
+
+            List<String> confirmedDays = daySelections.remove(event.getUser().getId());
+
+            Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
+                    postOutService.convertDatesFromSelectMenu(confirmedDays), noteInput);
+
+            EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
+            if (!result.get("added").isEmpty()) {
+                embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
+            }
+            if (!result.get("duplicates").isEmpty()) {
+                embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
+            }
+
+            event.editMessageEmbeds(embed.build())
+                    .setComponents()
+                    .queue();
         }
     }
 }

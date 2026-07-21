@@ -32,7 +32,7 @@ public class PostOutService {
     //Used to help build menu options in the listener
     public record RaidDay(String label, String value, LocalDate date) {}
 
-    public Map<String, List<String>> insertPostOut(String discordId, List<LocalDate> dateList) {
+    public Map<String, List<String>> insertPostOut(String discordId, List<LocalDate> dateList, String note) {
         List<String> added = new ArrayList<>();
         List<String> duplicates = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
@@ -49,7 +49,7 @@ public class PostOutService {
         }
 
         if (!added.isEmpty()) {
-            notificationService.sendPostOutCreation(discordId, added);
+            notificationService.sendPostOutCreation(discordId, added, note);
         }
 
         return Map.of("added", added, "duplicates", duplicates);
