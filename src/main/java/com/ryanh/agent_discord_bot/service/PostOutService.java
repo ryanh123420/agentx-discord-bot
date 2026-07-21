@@ -140,9 +140,26 @@ public class PostOutService {
 
                 raidDaysList.add(new RaidDay(day.name().charAt(0)
                         + day.name().substring(1).toLowerCase(),
-                        day.name().toLowerCase(),
+                        reset.plusDays(offset).getMonthValue() + "/" + reset.plusDays(offset).getDayOfMonth(),
                         reset.plusDays(offset)));
             }
+        }
+
+        return raidDaysList;
+    }
+
+    public List<RaidDay> getNextWeekRaidDays() {
+        LocalDate reset = getNextRaidWeekStartDate().plusWeeks(1);
+        List<RaidDay> raidDaysList = new ArrayList<>();
+
+        for(int i = 0; i < guildConfig.getRaidDays().size(); i++) {
+            DayOfWeek day = guildConfig.getRaidDays().get(i);
+            int offset = daysSinceReset(day) - 1;
+
+            raidDaysList.add(new RaidDay(day.name().charAt(0)
+                    + day.name().substring(1).toLowerCase(),
+                    reset.plusDays(offset).getMonthValue() + "/" + reset.plusDays(offset).getDayOfMonth(),
+                    reset.plusDays(offset)));
         }
 
         return raidDaysList;
@@ -170,12 +187,16 @@ public class PostOutService {
 
 
     public List<LocalDate> convertDatesFromSelectMenu(List<String> confirmedDays) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("M/d");
         LocalDate now = LocalDate.now(ZoneId.of(guildConfig.getTimezone()));
+        List<LocalDate> dateList = new ArrayList<>();
 
-        return confirmedDays.stream()
-                .map(s -> DayOfWeek.valueOf(s.toUpperCase()))
-                .map(s -> now.with(TemporalAdjusters.nextOrSame(s)))
-                .toList();
+        for(String date: confirmedDays) {
+            LocalDate formatedDate = parseDate(date,formatter,now.getYear());
+            dateList.add(formatedDate);
+        }
+
+        return dateList;
     }
 
     public List<LocalDate> convertDatesFromModal(String datesInput) {

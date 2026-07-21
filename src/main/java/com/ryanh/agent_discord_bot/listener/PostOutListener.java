@@ -18,6 +18,8 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +47,11 @@ public class PostOutListener extends ListenerAdapter {
                                     Button.primary("postout-thisreset", "This Week ("
                                             + postOutService.getNextRaidWeekStartDate().getMonthValue() + "/"
                                             + postOutService.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
+                                    Button.primary("postout-nextreset", "Next Week ("
+                                            + postOutService.getNextRaidWeekStartDate()
+                                            .plusWeeks(1).getMonthValue() + "/"
+                                            + postOutService.getNextRaidWeekStartDate()
+                                            .plusWeeks(1).getDayOfMonth() + ")"),
                                     Button.primary("postout-futurereset", "Later Week")
                             ),
                             ActionRow.of(
@@ -132,8 +139,9 @@ public class PostOutListener extends ListenerAdapter {
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         //User selected options on the day selection dropdown for "This Reset".
-        if(event.getComponentId().equals("postout-thisreset-selectdays")) {
+        if(event.getComponentId().equals("postout-selectdays")) {
             daySelections.put(event.getUser().getId(), event.getValues());
+            System.out.println(daySelections);
             event.deferEdit().queue();
         }
         //User selected options in the delete command dropdown.
@@ -148,12 +156,35 @@ public class PostOutListener extends ListenerAdapter {
     public void onButtonInteraction(ButtonInteractionEvent event) {
         //User clicked "This Reset" button on create command.
         if(event.getComponentId().equals("postout-thisreset")) {
-            StringSelectMenu.Builder menu = StringSelectMenu.create("postout-thisreset-selectdays")
+            StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdays")
                     .setMinValues(1);
 
             for (PostOutService.RaidDay day: postOutService.validMenuOptions()) {
                 menu.addOption(day.label(), day.value(),
                         day.date().getMonth().getValue() + "/" + day.date().getDayOfMonth());
+            }
+            menu.setMaxValues(menu.getOptions().size());
+
+            event.editMessageEmbeds(EmbedUtility.info(event.getUser(),
+                            "Select which days:").build())
+                    .setComponents(
+                            ActionRow.of(
+                                    menu.build()
+                            ),
+                            ActionRow.of(
+                                    Button.primary("postout-create-confirm", "Confirm"),
+                                    Button.danger("postout-create-cancel", "Cancel")
+                            )
+                    ).queue();
+        }
+        else if(event.getComponentId().equals("postout-nextreset")) {
+            StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdays")
+                    .setMinValues(1);
+
+            for (PostOutService.RaidDay day: postOutService.getNextWeekRaidDays()) {
+                menu.addOption(day.label(), day.value(),
+                        day.date().getMonth().getValue()
+                                + "/" + day.date().getDayOfMonth());
             }
             menu.setMaxValues(menu.getOptions().size());
 
@@ -198,12 +229,10 @@ public class PostOutListener extends ListenerAdapter {
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
             if (!result.get("added").isEmpty()) {
-                embed.addField("✅ Added:", "🗓️ " +
-                        String.join("\n", result.get("added")), true);
+                embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
             }
             if (!result.get("duplicates").isEmpty()) {
-                embed.addField("⚠️ Already exists:", "🗓️ " +
-                        String.join("\n", result.get("duplicates")), true);
+                embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
             }
 
             event.editMessageEmbeds(embed.build())
@@ -253,12 +282,10 @@ public class PostOutListener extends ListenerAdapter {
 
                 EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
                 if (!result.get("added").isEmpty()) {
-                    embed.addField("✅ Added:", "🗓️ " +
-                            String.join("\n", result.get("added")), true);
+                    embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
                 }
                 if (!result.get("duplicates").isEmpty()) {
-                    embed.addField("⚠️ Already exists:", "🗓️ " +
-                            String.join("\n", result.get("duplicates")), true);
+                    embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
                 }
 
                 event.editMessageEmbeds(embed.build())
