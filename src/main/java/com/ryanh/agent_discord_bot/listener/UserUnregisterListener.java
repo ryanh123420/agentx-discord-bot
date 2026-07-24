@@ -19,7 +19,7 @@ public class UserUnregisterListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if(event.getName().equals("unregister")) {
+        if(event.getName().equals("simcraft") && event.getSubcommandName().equals("unregister")) {
             if(memberService.checkIfRegistered(event.getUser().getId())) {
                 event.replyEmbeds(EmbedUtility.info(event.getUser(),
                                 "Are you sure you want to unregister your BattleTag?")

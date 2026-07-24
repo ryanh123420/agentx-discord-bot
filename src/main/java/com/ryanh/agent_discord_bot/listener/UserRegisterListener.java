@@ -17,7 +17,7 @@ public class UserRegisterListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if(event.getName().equals("register")) {
+        if(event.getName().equals("simcraft") && event.getSubcommandName().equals("register")) {
             String discordId = event.getUser().getId();
             String input = event.getOption("battletag").getAsString();
 

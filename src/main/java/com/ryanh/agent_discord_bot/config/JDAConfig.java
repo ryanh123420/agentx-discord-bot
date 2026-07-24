@@ -33,9 +33,13 @@ public class JDAConfig {
         jda.getGuildById(guildId)
                 .updateCommands()
                 .addCommands(
-                        Commands.slash("register", "Register with BattleTag")
-                                .addOption(OptionType.STRING, "battletag", "Enter BattleTag", true),
-                        Commands.slash("unregister", "Un-register a BattleTag"),
+                        Commands.slash("simcraft", "Wishlist upload commands")
+                                .addSubcommands(
+                                        new SubcommandData("register", "Register with BattleTag")
+                                                .addOption(OptionType.STRING, "battletag",
+                                                        "Enter BattleTag", true),
+                                        new SubcommandData("unregister", "Unregister BattleTag")
+                                ).setDefaultPermissions(DefaultMemberPermissions.DISABLED),
                         Commands.slash("postout", "Post-Out commands")
                                 .addSubcommands(
                                         new SubcommandData("create", "Create a Post-Out for a raid"),
