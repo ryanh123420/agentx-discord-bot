@@ -3,16 +3,15 @@ package com.ryanh.agent_discord_bot.service;
 import com.ryanh.agent_discord_bot.config.GuildConfig;
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.repository.PostOutRepository;
+import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PostOutService {
@@ -39,12 +38,12 @@ public class PostOutService {
 
         for(LocalDate date: dateList) {
             if(postOutRepository.existsByDiscordIdAndPostDate(discordId, date)) {
-                duplicates.add(formatDate(date));
+                duplicates.add(PostOutFormatter.formatDate(date));
             }
             else {
                 PostOut postOut = new PostOut(discordId, date, now);
                 postOutRepository.save(postOut);
-                added.add(formatDate(date));
+                added.add(PostOutFormatter.formatDate(date));
             }
         }
 
@@ -79,10 +78,10 @@ public class PostOutService {
 
         for(PostOut postOut: getUsersPostOuts(discordId)) {
             if(postOut.getPostDate().isBefore(getNextRaidWeekStartDate().plusWeeks(1))) {
-                thisWeek.add(formatDate(postOut));
+                thisWeek.add(PostOutFormatter.formatDate(postOut));
             }
             else {
-                futureWeek.add(formatDate(postOut));
+                futureWeek.add(PostOutFormatter.formatDate(postOut));
             }
         }
 
@@ -252,27 +251,16 @@ public class PostOutService {
         return postOutRepository.findAllByDiscordId(discordId);
     }
 
+    public List<PostOut> getAllPostOuts() {
+        return postOutRepository.findAll();
+    }
+
     public List<String> printListOfPostOuts(List<PostOut> postOuts) {
         return postOuts.stream()
                 .sorted(Comparator.comparing(PostOut::getPostDate))
-                .map(this::formatDate)
+                .map(PostOutFormatter::formatDate)
                 .toList();
     }
-
-    public String printSinglePostOut(PostOut postOut) {
-        return formatDate(postOut);
-    }
-
-    private String formatDate(PostOut postOut) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
-        return postOut.getPostDate().format(formatter);
-    }
-
-    private String formatDate(LocalDate postDate) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
-        return postDate.format(formatter);
-    }
-
 
     /**
      * Sends all post outs for the current and next raid reset.

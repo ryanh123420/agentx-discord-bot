@@ -46,6 +46,10 @@ public class JDAConfig {
                                 .addSubcommands(
                                         new SubcommandData("update", "Update users on thread"),
                                         new SubcommandData("settings", "Set which threads are managed")
+                                ).setDefaultPermissions(DefaultMemberPermissions.DISABLED),
+                        Commands.slash("admin", "Admin commands")
+                                .addSubcommands(
+                                        new SubcommandData("viewpostouts", "View all post outs")
                                 ).setDefaultPermissions(DefaultMemberPermissions.DISABLED)
         ).queue();
 

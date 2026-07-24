@@ -3,6 +3,7 @@ package com.ryanh.agent_discord_bot.listener;
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.PostOutService;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
+import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -111,7 +112,7 @@ public class PostOutListener extends ListenerAdapter {
 
                 for(PostOut post: postOutList) {
                     menu.addOption(
-                            postOutService.printSinglePostOut(post),
+                            PostOutFormatter.formatDate(post),
                             String.valueOf(post.getId())
                     );
                 }
