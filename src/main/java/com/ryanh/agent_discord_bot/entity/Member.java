@@ -6,13 +6,13 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 
 @Entity
-@Table(name="users")
-public class User {
+@Table(name="member")
+public class Member {
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         private Integer id;
 
-        @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+        @OneToMany(mappedBy = "member", cascade = CascadeType.ALL)
         private List<RaidCharacter> characters;
 
         @NotBlank
@@ -23,9 +23,9 @@ public class User {
         private String discordId;
 
 
-        public User() {}
+        public Member() {}
 
-        public User(String battleTag, String discordId) {
+        public Member(String battleTag, String discordId) {
                 this.battleTag = battleTag;
                 this.discordId = discordId;
         }

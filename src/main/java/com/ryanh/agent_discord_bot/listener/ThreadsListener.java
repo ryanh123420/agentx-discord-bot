@@ -14,7 +14,7 @@ public class ThreadsListener extends ListenerAdapter {
 
         }
         else if(event.getName().equals("threads") && "manage".equals(event.getSubcommandName())) {
-            event.replyEmbeds(EmbedUtility.info("Manage Threads",
+            event.replyEmbeds(EmbedUtility.info(event.getUser(),
                             "Select threads to manage")
                             .build())
                     .addComponents(ActionRow.of(
