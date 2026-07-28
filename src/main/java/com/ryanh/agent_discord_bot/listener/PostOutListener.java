@@ -214,7 +214,7 @@ public class PostOutListener extends ListenerAdapter {
             Modal modal = Modal.create("postout-futurereset-datemodal", "Create a Post Out")
                     .addComponents(
                             Label.of("Enter month/day, separated by commas", dateInput),
-                            Label.of("(Optional) Note", noteInput)
+                            Label.of("Note", noteInput)
                     ).build();
 
             event.replyModal(modal).queue();
@@ -228,16 +228,26 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked confirm button on create command.
         else if(event.getComponentId().equals("postout-create-confirm")) {
-            event.editMessageEmbeds(EmbedUtility.info(event.getUser(),
-                                    "(Optional) Do you want to add a note?")
-                            .build())
-                    .setComponents(
-                            ActionRow.of(
-                                    Button.primary("postout-addnote", "Yes"),
-                                    Button.primary("postout-skipnote", "Skip")
-                            )
-                    )
-                    .queue();
+            List<String> confirmedDays = daySelections.get(event.getUser().getId());
+
+            //User tried to click "Confirm" without selecting any days.
+            if (confirmedDays == null || confirmedDays.isEmpty()) {
+                event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
+                                "Please select at least one day:").build())
+                        .queue();
+            }
+            else {
+                event.editMessageEmbeds(EmbedUtility.info(event.getUser(),
+                                        "(Optional) Do you want to add a note?")
+                                .build())
+                        .setComponents(
+                                ActionRow.of(
+                                        Button.primary("postout-addnote", "Yes"),
+                                        Button.primary("postout-skipnote", "Skip")
+                                )
+                        )
+                        .queue();
+            }
         }
         //User clicked Add Note button after confirming dates
         else if (event.getComponentId().equals("postout-addnote")) {
