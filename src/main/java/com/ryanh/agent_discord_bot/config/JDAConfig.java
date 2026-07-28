@@ -28,6 +28,10 @@ public class JDAConfig {
 
     @Bean
     public JDA build() throws InterruptedException {
+
+        System.out.println("Token empty: " + (token == null || token.isBlank()));
+        System.out.println("Guild ID: '" + guildId + "'");
+
         JDA jda = JDABuilder
                 .createDefault(token, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MESSAGES)
                 .build()
