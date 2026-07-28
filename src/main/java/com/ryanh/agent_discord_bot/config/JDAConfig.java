@@ -58,7 +58,7 @@ public class JDAConfig {
                         ).setDefaultPermissions(DefaultMemberPermissions.DISABLED)
         );
 
-        if(guildId != null) {
+        if(guildId != null && !guildId.isBlank()) {
             jda.getGuildById(guildId).updateCommands().addCommands(commands).queue();
         }
         else {
