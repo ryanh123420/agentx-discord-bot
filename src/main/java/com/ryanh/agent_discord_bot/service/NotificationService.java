@@ -34,7 +34,7 @@ public class NotificationService {
             embed.addField("🗒️ Note:", note, false);
         }
 
-        sendEmbedToChannel(embed.build(), guildConfig.getOfficerChannelId());
+        sendEmbedToChannel(embed.build(), guildConfig.getPostOutChannelId());
     }
 
     public void sendPostOutReport(List<PostOut> thisWeek, List<PostOut> nextWeek) {

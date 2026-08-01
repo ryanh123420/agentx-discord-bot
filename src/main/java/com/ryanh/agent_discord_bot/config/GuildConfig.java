@@ -14,6 +14,7 @@ public class GuildConfig {
     private List<DayOfWeek> raidDays;
     private DayOfWeek resetDay;
     private String officerChannelId;
+    private String postOutChannelId;
 
     public String getTimezone() {
         return timezone;
@@ -53,5 +54,13 @@ public class GuildConfig {
 
     public void setOfficerChannelId(String officerChannelId) {
         this.officerChannelId = officerChannelId;
+    }
+
+    public String getPostOutChannelId() {
+        return postOutChannelId;
+    }
+
+    public void setPostOutChannelId(String postOutChannelId) {
+        this.postOutChannelId = postOutChannelId;
     }
 }
