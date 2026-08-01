@@ -19,8 +19,6 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,10 +43,10 @@ public class PostOutListener extends ListenerAdapter {
                             .build())
                     .addComponents(
                             ActionRow.of(
-                                    Button.primary("postout-thisreset", "This Week ("
+                                    Button.primary("postout-thisreset", "Week of ("
                                             + postOutService.getNextRaidWeekStartDate().getMonthValue() + "/"
                                             + postOutService.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
-                                    Button.primary("postout-nextreset", "Next Week ("
+                                    Button.primary("postout-nextreset", "Week of ("
                                             + postOutService.getNextRaidWeekStartDate()
                                             .plusWeeks(1).getMonthValue() + "/"
                                             + postOutService.getNextRaidWeekStartDate()
