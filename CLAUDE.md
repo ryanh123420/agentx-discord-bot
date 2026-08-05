@@ -39,13 +39,14 @@ WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring
 - Empty string over null for optional values
 - Button/menu component IDs prefixed by feature name (e.g. postout-create-confirm)
 - Formatting utilities are static classes, not Spring beans (EmbedUtility, PostOutFormatter)
+- Never call `ZonedDateTime.now()` directly — inject a `Clock` field and use `ZonedDateTime.now(clock)`. `PostOutService` holds a `Clock` built from `GuildConfig.getTimezone()` in its `@Autowired` constructor, plus a secondary constructor taking a `Clock` for tests
 
 **Testing:**
 - Unit tests with JUnit 5 and Mockito
 - Mock repositories and NotificationService, never mock the class under test
 - GuildConfig values set manually in @BeforeEach (tests don't load Spring context)
 - No @SpringBootTest — tests are pure unit tests
-- Methods using ZonedDateTime.now() have overloaded versions accepting a ZonedDateTime parameter for testability
+- Time-dependent code is tested by constructing the service with a `Clock.fixed(...)` via its secondary constructor
 
 **Package layout** (`com.ryanh.agent_discord_bot`):
 - `listener/` — JDA `ListenerAdapter` subclasses handle slash commands, buttons, modals, select menus. Each listener is a Spring `@Component` auto-registered via `ListenerRegister`.
