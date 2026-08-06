@@ -7,6 +7,7 @@ import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -307,6 +308,7 @@ public class PostOutService {
     /**
      * Deletes post outs past the current date at midnight each day.
      */
+    @Transactional
     @Scheduled(cron = "0 0 0 * * *", zone = "${guild.timezone}")
     public void cleanPostOuts() {
         LocalDate now = LocalDate.now(clock);
