@@ -265,6 +265,15 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-skipnote")) {
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
 
+            //Nothing left to submit, so the button was clicked twice.
+            if(confirmedDays == null || confirmedDays.isEmpty()) {
+                event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
+                                "That post out was already submitted.").build())
+                        .setComponents()
+                        .queue();
+                return;
+            }
+
             Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.convertDatesFromSelectMenu(confirmedDays), "");
 
@@ -291,12 +300,27 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-delete-confirm")) {
             List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
 
+            //User clicked "Confirm" without selecting any post outs, or clicked it twice.
+            if(confirmedDeleteIds == null || confirmedDeleteIds.isEmpty()) {
+                event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
+                                "Please select at least one post out to delete:").build())
+                        .queue();
+                return;
+            }
+
             Map<String, List<String>> result = postOutService.deletePostOut(event.getUser().getId(),
                     confirmedDeleteIds);
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Results");
 
-            embed.addField("🗓️ Deleted:", String.join("\n", result.get("deleted")), true);
+            //Selected post outs can already be gone (cleanup job, stale menu), which would
+            //leave this field blank and make JDA reject the embed.
+            if(result.get("deleted").isEmpty()) {
+                embed.addField("🗓️ Deleted:", "None", true);
+            }
+            else {
+                embed.addField("🗓️ Deleted:", String.join("\n", result.get("deleted")), true);
+            }
             if(result.get("remaining").isEmpty()) {
                 embed.addField("🗓️ Remaining:", "None", true);
             }
@@ -344,6 +368,15 @@ public class PostOutListener extends ListenerAdapter {
             String noteInput = event.getValue("noteInput").getAsString();
 
             List<String> confirmedDays = daySelections.remove(event.getUser().getId());
+
+            //Nothing left to submit, so the modal was submitted twice.
+            if(confirmedDays == null || confirmedDays.isEmpty()) {
+                event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
+                                "That post out was already submitted.").build())
+                        .setComponents()
+                        .queue();
+                return;
+            }
 
             Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
                     postOutService.convertDatesFromSelectMenu(confirmedDays), noteInput);

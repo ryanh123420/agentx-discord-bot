@@ -7,12 +7,17 @@ import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class NotificationService {
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+
     private final JDA jda;
     private final GuildConfig guildConfig;
 
@@ -22,7 +27,16 @@ public class NotificationService {
     }
 
     public void sendEmbedToChannel(MessageEmbed embed, String channelId) {
-        jda.getTextChannelById(channelId).sendMessageEmbeds(embed).queue();
+        TextChannel channel = jda.getTextChannelById(channelId);
+
+        //A bad or uncached channel id shouldn't blow up the caller, which has usually
+        //already committed to the database by this point.
+        if(channel == null) {
+            log.warn("Channel {} not found, embed was not sent.", channelId);
+            return;
+        }
+
+        channel.sendMessageEmbeds(embed).queue();
     }
 
     public void sendPostOutCreation(String discordId, List<String> postOutList, String note) {
@@ -38,15 +52,23 @@ public class NotificationService {
     }
 
     public void sendPostOutReport(List<PostOut> thisWeek, List<PostOut> nextWeek) {
-        String thisWeekText = PostOutFormatter.formatPostOutReport(thisWeek);
-        String nextWeekText = PostOutFormatter.formatPostOutReport(nextWeek);
-
         EmbedBuilder embed = EmbedUtility.info("🗓️ Weekly Post Out Report",
-                "The following players have made a post out for this week and next week:")
-                .addField("This Week:", thisWeekText, true)
-                .addField("Next Week:", nextWeekText, true);
+                "The following players have made a post out for this week and next week:");
+
+        addReportSection(embed, "This Week:", PostOutFormatter.formatPostOutReport(thisWeek));
+        addReportSection(embed, "Next Week:", PostOutFormatter.formatPostOutReport(nextWeek));
 
         sendEmbedToChannel(embed.build(), guildConfig.getOfficerChannelId());
+    }
+
+    /**
+     * Adds a report section, which the formatter may have split over several field values to
+     * stay inside Discord's per field character limit.
+     */
+    private void addReportSection(EmbedBuilder embed, String title, List<String> fieldValues) {
+        for(int i = 0; i < fieldValues.size(); i++) {
+            embed.addField(i == 0 ? title : title + " (cont.)", fieldValues.get(i), true);
+        }
     }
 
 

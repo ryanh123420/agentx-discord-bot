@@ -17,18 +17,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw test -Dtest=PostOutServiceTest#testMethodName     # single method
 ```
 
+## Working With Me
+
+- I am learning backend development. When I'm implementing something
+  for the first time, explain the approach and let me write it —
+  don't generate the implementation unless I ask.
+- Prefer reviewing my code over writing it. Tell me what's wrong and
+  why, including things a senior dev would flag.
+- When you do write code, explain the non-obvious parts. I should be
+  able to explain every line in my repo.
+- Ask before making multi-file changes.
+
 ## Local Dev Setup
 
 - Java 21, Spring Boot 4.0.6, Maven wrapper included
 - `docker-compose up` starts PostgreSQL 16 (localhost:5432/agentx)
-- Required env vars: `AGENCY_BOT_DISCORD_TOKEN`, `WOW_UTILS_API_KEY`, `WOW_UTILS_GUILD_ID`
+- Required env vars: `AGENCY_BOT_DISCORD_TOKEN`, `WOW_UTILS_API_KEY`
 - Production profile uses `application-production.properties` with Railway-style env vars (PGHOST, etc.)
 
 ## Architecture
 
 WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring Boot.
 
-**Core domain:** Members register via BattleTag, link WoW characters, and manage "post-outs" (raid absence notifications). Officers receive scheduled Discord embed summaries.
+**Core domain:** Members can manage "post-outs" (raid absence notifications). Officers receive scheduled Discord embed summaries.
 
 **Key conventions:**
 - Listeners handle Discord interactions only, delegate all logic to services

@@ -26,7 +26,9 @@ public class AdminListener extends ListenerAdapter {
             embed.setTitle("List of all Post Outs:");
             List<PostOut> postOutList = postOutService.getAllPostOuts();
 
-            embed.setDescription(PostOutFormatter.formatPostOutReport(postOutList));
+            //The formatter splits its output to fit embed fields. A description holds far more,
+            //so the pieces go back together here.
+            embed.setDescription(String.join("", PostOutFormatter.formatPostOutReport(postOutList)));
 
             event.replyEmbeds(embed.build()).setEphemeral(true).queue();
         }

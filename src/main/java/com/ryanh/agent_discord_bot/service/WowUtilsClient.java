@@ -1,19 +1,33 @@
 package com.ryanh.agent_discord_bot.service;
 
-import com.ryanh.agent_discord_bot.model.RootResponse;
-import com.ryanh.agent_discord_bot.model.WowUtilsRoster;
+import com.ryanh.agent_discord_bot.exception.WowUtilsException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+
+import java.util.List;
 
 /**
  * Wrapper class for WoWUtils API calls
  */
 @Service
 public class WowUtilsClient {
-
     private final RestClient restClient;
     private volatile String groupId;
+
+    public record RootResponse(String groupId) {}
+    public record DroptimizerRequest(String url) {}
+    public record DroptimizerResponse(
+            String characterId,
+            String profileKey,
+            String source,
+            String importedAt,
+            String reportUrl,
+            List<String> warnings
+    ) {}
 
     public WowUtilsClient(@Value("${WOW_UTILS_API_KEY}") String apiKey) {
         this.restClient = RestClient.builder()
@@ -34,10 +48,18 @@ public class WowUtilsClient {
         return groupId;
     }
 
-    public WowUtilsRoster getRoster() {
-        return restClient.get()
-                .uri("/groups/{groupId}/roster", getGroupId())
-                .retrieve()
-                .body(WowUtilsRoster.class);
+    public DroptimizerResponse postDroptimizer(String url) {
+        try {
+            return restClient.post()
+                    .uri("/groups/{groupId}/droptimizers", getGroupId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new DroptimizerRequest(url))
+                    .retrieve()
+                    .body(DroptimizerResponse.class);
+        } catch (RestClientResponseException e) {
+            throw new WowUtilsException("Failed to upload report: " + e.getMessage());
+        } catch (RestClientException e) {
+            throw new WowUtilsException("Could not connect to WoWUtils: " + e.getMessage());
+        }
     }
 }
