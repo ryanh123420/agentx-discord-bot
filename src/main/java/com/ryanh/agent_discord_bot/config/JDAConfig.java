@@ -38,7 +38,7 @@ public class JDAConfig {
         List<CommandData> commands = List.of(
                 Commands.slash("wishlist", "WoWUtils wishlist commands")
                         .addSubcommands(
-                                new SubcommandData("upload", "Register with BattleTag")
+                                new SubcommandData("upload", "Upload a Droptimizer report")
                                         .addOption(OptionType.STRING, "reporturl",
                                                 "Paste a RaidBots droptimizer or QE Live report", true)
                         ),

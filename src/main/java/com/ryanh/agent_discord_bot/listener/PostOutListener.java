@@ -19,16 +19,16 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class PostOutListener extends ListenerAdapter {
 
     private final PostOutService postOutService;
-    private final Map<String, List<String>> daySelections = new HashMap<>();
-    private final Map<String, List<String>> deleteSelections = new HashMap<>();
+    private final Map<String, List<String>> daySelections = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> deleteSelections = new ConcurrentHashMap<>();
 
     public PostOutListener(PostOutService postOutService) {
         this.postOutService = postOutService;

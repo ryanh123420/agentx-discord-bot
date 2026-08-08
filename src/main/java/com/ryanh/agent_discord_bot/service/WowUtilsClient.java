@@ -1,6 +1,7 @@
 package com.ryanh.agent_discord_bot.service;
 
 import com.ryanh.agent_discord_bot.exception.WowUtilsException;
+import com.ryanh.agent_discord_bot.model.DroptimizerResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -18,16 +19,10 @@ public class WowUtilsClient {
     private final RestClient restClient;
     private volatile String groupId;
 
-    public record RootResponse(String groupId) {}
+    public record RootResponse(Group group) {
+        public record Group(String groupId) {}
+    }
     public record DroptimizerRequest(String url) {}
-    public record DroptimizerResponse(
-            String characterId,
-            String profileKey,
-            String source,
-            String importedAt,
-            String reportUrl,
-            List<String> warnings
-    ) {}
 
     public WowUtilsClient(@Value("${WOW_UTILS_API_KEY}") String apiKey) {
         this.restClient = RestClient.builder()
@@ -40,8 +35,12 @@ public class WowUtilsClient {
         if (groupId == null) {
             synchronized (this) {
                 if (groupId == null) {
-                    groupId = restClient.get().uri("").retrieve()
-                            .body(RootResponse.class).groupId();
+                    groupId = restClient.get()
+                            .uri("")
+                            .retrieve()
+                            .body(RootResponse.class)
+                            .group()
+                            .groupId();
                 }
             }
         }
@@ -57,9 +56,9 @@ public class WowUtilsClient {
                     .retrieve()
                     .body(DroptimizerResponse.class);
         } catch (RestClientResponseException e) {
-            throw new WowUtilsException("Failed to upload report: " + e.getMessage());
+            throw new WowUtilsException("Failed to upload report: " + "\n" + e.getMessage());
         } catch (RestClientException e) {
-            throw new WowUtilsException("Could not connect to WoWUtils: " + e.getMessage());
+            throw new WowUtilsException("Could not connect to WoWUtils: " + "\n" + e.getMessage());
         }
     }
 }
