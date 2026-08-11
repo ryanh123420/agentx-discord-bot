@@ -2,10 +2,11 @@ package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.exception.WowUtilsException;
 import com.ryanh.agent_discord_bot.model.DroptimizerResponse;
-import com.ryanh.agent_discord_bot.service.WowUtilsClient;
+import com.ryanh.agent_discord_bot.client.WowUtilsClient;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import com.ryanh.agent_discord_bot.utility.WishlistFormatter;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.springframework.stereotype.Component;
@@ -29,15 +30,26 @@ public class WishlistListener extends ListenerAdapter {
             try {
                 DroptimizerResponse response = wowUtilsClient.postDroptimizer(reportUrl);
 
-                EmbedBuilder embed = EmbedUtility.info(event.getUser(), "Upload successful")
-                        .setUrl(response.reportUrl())
-                        .addField(
-                                "Upload details:",
-                                WishlistFormatter.formatCharacterName(response.characterId()) + "\n"
-                                        + WishlistFormatter.formatImportedAt(response.importedAt()) + "\n"
-                                        + WishlistFormatter.formatWarnings(response.warnings()),
-                                false
-                        );
+                EmbedBuilder embed = EmbedUtility.info(event.getUser(), "")
+                        .setTitle("Report Link")
+                        .setUrl(response.reportUrl());
+
+                if (response.warnings().isEmpty()) {
+                    MessageEmbed.Field detailsField = new MessageEmbed.Field("Upload Successful:",
+                            WishlistFormatter.formatCharacterName(response.characterId()) + "\n"
+                                    + WishlistFormatter.formatImportedAt(response.importedAt()) + "\n",
+                            false
+                    );
+                    embed.addField(detailsField);
+                }
+                else {
+                    MessageEmbed.Field warningField = new MessageEmbed.Field(
+                            "⚠️ Your report has incorrect sim settings, please re-sim fixing the following:",
+                            WishlistFormatter.formatWarnings(response.warnings()),
+                            false);
+
+                    embed.addField(warningField);
+                }
 
                 event.getHook()
                         .sendMessageEmbeds(embed.build())
@@ -45,7 +57,9 @@ public class WishlistListener extends ListenerAdapter {
 
             } catch (WowUtilsException e) {
                 event.getHook()
-                        .sendMessageEmbeds(EmbedUtility.error(event.getUser(), e.getMessage()).build())
+                        .sendMessageEmbeds(EmbedUtility.error(event.getUser(),
+                                WishlistFormatter.formatError(e.getErrorCodes(),
+                                        e.getRetryAfterSeconds(), e.getRateLimitReset())).build())
                         .queue();
             }
 
