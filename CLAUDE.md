@@ -17,18 +17,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw test -Dtest=PostOutServiceTest#testMethodName     # single method
 ```
 
+## Working With Me
+
+- I am learning backend development. When I'm implementing something
+  for the first time, explain the approach and let me write it —
+  don't generate the implementation unless I ask.
+- Prefer reviewing my code over writing it. Tell me what's wrong and
+  why, including things a senior dev would flag.
+- When you do write code, explain the non-obvious parts. I should be
+  able to explain every line in my repo.
+- Ask before making multi-file changes.
+
 ## Local Dev Setup
 
 - Java 21, Spring Boot 4.0.6, Maven wrapper included
 - `docker-compose up` starts PostgreSQL 16 (localhost:5432/agentx)
-- Required env vars: `AGENCY_BOT_DISCORD_TOKEN`, `WOW_UTILS_API_KEY`, `WOW_UTILS_GUILD_ID`
+- Required env vars: `AGENCY_BOT_DISCORD_TOKEN`, `WOW_UTILS_API_KEY`
 - Production profile uses `application-production.properties` with Railway-style env vars (PGHOST, etc.)
 
 ## Architecture
 
 WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring Boot.
 
-**Core domain:** Members register via BattleTag, link WoW characters, and manage "post-outs" (raid absence notifications). Officers receive scheduled Discord embed summaries.
+**Core domain:** Members can manage "post-outs" (raid absence notifications). Officers receive scheduled Discord embed summaries. Members can also upload droptimizer reports (wishlists) to the WoWUtils API.
 
 **Key conventions:**
 - Listeners handle Discord interactions only, delegate all logic to services
@@ -38,7 +49,7 @@ WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring
 - Constructor injection preferred over field injection
 - Empty string over null for optional values
 - Button/menu component IDs prefixed by feature name (e.g. postout-create-confirm)
-- Formatting utilities are static classes, not Spring beans (EmbedUtility, PostOutFormatter)
+- Formatting utilities are static classes, not Spring beans (EmbedUtility, PostOutFormatter, WishlistFormatter)
 - Never call `ZonedDateTime.now()` directly — inject a `Clock` field and use `ZonedDateTime.now(clock)`. `PostOutService` holds a `Clock` built from `GuildConfig.getTimezone()` in its `@Autowired` constructor, plus a secondary constructor taking a `Clock` for tests
 
 **Testing:**
@@ -49,13 +60,15 @@ WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring
 - Time-dependent code is tested by constructing the service with a `Clock.fixed(...)` via its secondary constructor
 
 **Package layout** (`com.ryanh.agent_discord_bot`):
-- `listener/` — JDA `ListenerAdapter` subclasses handle slash commands, buttons, modals, select menus. Each listener is a Spring `@Component` auto-registered via `ListenerRegister`.
-- `service/` — Business logic. `PostOutService` has complex date/week math around raid schedules. `MemberService` validates BattleTag against WoWUtils API. `NotificationService` sends embeds to officer channel.
-- `entity/` — JPA entities: `Member`, `RaidCharacter`, `PostOut`. Member↔RaidCharacter is OneToMany. PostOut has unique constraint on (discordId, postDate).
-- `repository/` — Spring Data JPA interfaces.
+- `listener/` — JDA `ListenerAdapter` subclasses handle slash commands, buttons, modals, select menus. Each listener is a Spring `@Component` auto-registered via `ListenerRegister`. Currently `AdminListener`, `PostOutListener`, `ThreadsListener`, `WishlistListener`.
+- `client/` — HTTP wrappers around external APIs. `WowUtilsClient` (droptimizer upload) builds its `RestClient` from an injected `RestClient.Builder` so tests can bind `MockRestServiceServer` to it.
+- `service/` — Business logic. `PostOutService` has complex date/week math around raid schedules. `NotificationService` sends embeds to officer channel.
+- `entity/` — JPA entities. `PostOut` only; unique constraint on (discordId, postDate).
+- `repository/` — Spring Data JPA interfaces. `PostOutRepository` only.
+- `exception/` — `WowUtilsException`, carrying a `ErrorCodes` enum mapped from the API's wire values via `fromWireValue`.
 - `config/` — `JDAConfig` (bot setup), `GuildConfig` (timezone, raid days/times, officer channel), `ListenerRegister` (auto-wires all listeners to JDA).
-- `model/` — Enums (`GuildRank`, `Role`) and API response models (`WowUtilsRoster`).
-- `utility/` — `EmbedUtility` (Discord embed builders with color constants), `PostOutFormatter` (formats post-out data for display).
+- `model/` — Enums (`GuildRank`, `Role`) and API response records (`DroptimizerResponse`).
+- `utility/` — `EmbedUtility` (Discord embed builders with color constants), `PostOutFormatter`, `WishlistFormatter` (format data for display).
 
 **Listener interaction flow:** Slash command → button/menu selection → optional modal → confirmation → service call → database + Discord response. `PostOutListener` uses in-memory HashMaps to track multi-step user selections.
 

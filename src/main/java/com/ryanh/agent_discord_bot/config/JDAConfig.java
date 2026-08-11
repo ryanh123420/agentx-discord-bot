@@ -36,13 +36,12 @@ public class JDAConfig {
                 .awaitReady();
 
         List<CommandData> commands = List.of(
-                Commands.slash("simcraft", "Wishlist upload commands")
+                Commands.slash("wishlist", "WoWUtils wishlist commands")
                         .addSubcommands(
-                                new SubcommandData("register", "Register with BattleTag")
-                                        .addOption(OptionType.STRING, "battletag",
-                                                "Enter BattleTag", true),
-                                new SubcommandData("unregister", "Unregister BattleTag")
-                        ).setDefaultPermissions(DefaultMemberPermissions.DISABLED),
+                                new SubcommandData("upload", "Upload a Droptimizer report")
+                                        .addOption(OptionType.STRING, "reporturl",
+                                                "Paste a RaidBots droptimizer or QE Live report", true)
+                        ),
                 Commands.slash("postout", "Post-Out commands")
                         .addSubcommands(
                                 new SubcommandData("create", "Create a Post-Out for a raid"),
