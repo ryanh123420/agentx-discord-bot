@@ -15,6 +15,7 @@ public class GuildConfig {
     private DayOfWeek resetDay;
     private String officerChannelId;
     private String postOutChannelId;
+    private String botNotificationsChannelId;
 
     public String getTimezone() {
         return timezone;
@@ -62,5 +63,13 @@ public class GuildConfig {
 
     public void setPostOutChannelId(String postOutChannelId) {
         this.postOutChannelId = postOutChannelId;
+    }
+
+    public String getBotNotificationsChannelId() {
+        return botNotificationsChannelId;
+    }
+
+    public void setBotNotificationsChannelId(String botNotificationsChannelId) {
+        this.botNotificationsChannelId = botNotificationsChannelId;
     }
 }

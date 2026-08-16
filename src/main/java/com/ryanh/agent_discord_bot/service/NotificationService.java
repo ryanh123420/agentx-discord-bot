@@ -71,5 +71,10 @@ public class NotificationService {
         }
     }
 
+    public void sendWishListUpload(EmbedBuilder embed, String discordId) {
+        embed.setDescription("<@" + discordId + "> just uploaded a droptimizer.");
+        sendEmbedToChannel(embed.build(), guildConfig.getBotNotificationsChannelId());
+    }
+
 
 }

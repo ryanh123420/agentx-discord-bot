@@ -3,6 +3,7 @@ package com.ryanh.agent_discord_bot.listener;
 import com.ryanh.agent_discord_bot.exception.WowUtilsException;
 import com.ryanh.agent_discord_bot.model.DroptimizerResponse;
 import com.ryanh.agent_discord_bot.client.WowUtilsClient;
+import com.ryanh.agent_discord_bot.service.NotificationService;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import com.ryanh.agent_discord_bot.utility.WishlistFormatter;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -15,9 +16,11 @@ import org.springframework.stereotype.Component;
 public class WishlistListener extends ListenerAdapter {
 
     private final WowUtilsClient wowUtilsClient;
+    private final NotificationService notificationService;
 
-    public WishlistListener(WowUtilsClient wowUtilsClient) {
+    public WishlistListener(WowUtilsClient wowUtilsClient, NotificationService notificationService) {
         this.wowUtilsClient = wowUtilsClient;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -34,6 +37,7 @@ public class WishlistListener extends ListenerAdapter {
                         .setTitle("Report Link")
                         .setUrl(response.reportUrl());
 
+                //Clean sim validations, no warning field in the HTTP response body.
                 if (response.warnings().isEmpty()) {
                     MessageEmbed.Field detailsField = new MessageEmbed.Field("Upload Successful:",
                             WishlistFormatter.formatCharacterName(response.characterId()) + "\n"
@@ -54,6 +58,8 @@ public class WishlistListener extends ListenerAdapter {
                 event.getHook()
                         .sendMessageEmbeds(embed.build())
                         .queue();
+
+                notificationService.sendWishListUpload(embed, event.getUser().getId());
 
             } catch (WowUtilsException e) {
                 event.getHook()
