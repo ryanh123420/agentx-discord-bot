@@ -67,7 +67,7 @@ public class WishlistFormatter {
      * @param warnings Warnings from the response, possibly empty
      * @return Bulleted warnings within Discord's field limit, or "" if there are none
      */
-    public static String formatWarnings(List<String> warnings) {
+    public static String formatBulletList(List<String> warnings) {
         if(warnings == null || warnings.isEmpty()) {
             return "";
         }

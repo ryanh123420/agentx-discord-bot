@@ -16,6 +16,7 @@ public class GuildConfig {
     private String officerChannelId;
     private String postOutChannelId;
     private String botNotificationsChannelId;
+    private List<String> simValidations;
 
     public String getTimezone() {
         return timezone;
@@ -71,5 +72,13 @@ public class GuildConfig {
 
     public void setBotNotificationsChannelId(String botNotificationsChannelId) {
         this.botNotificationsChannelId = botNotificationsChannelId;
+    }
+
+    public List<String> getSimValidations() {
+        return simValidations;
+    }
+
+    public void setSimValidations(List<String> simValidations) {
+        this.simValidations = simValidations;
     }
 }

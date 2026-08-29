@@ -1,5 +1,6 @@
 package com.ryanh.agent_discord_bot.listener;
 
+import com.ryanh.agent_discord_bot.config.GuildConfig;
 import com.ryanh.agent_discord_bot.exception.WowUtilsException;
 import com.ryanh.agent_discord_bot.model.DroptimizerResponse;
 import com.ryanh.agent_discord_bot.client.WowUtilsClient;
@@ -17,10 +18,12 @@ public class WishlistListener extends ListenerAdapter {
 
     private final WowUtilsClient wowUtilsClient;
     private final NotificationService notificationService;
+    private final GuildConfig guildConfig;
 
-    public WishlistListener(WowUtilsClient wowUtilsClient, NotificationService notificationService) {
+    public WishlistListener(WowUtilsClient wowUtilsClient, NotificationService notificationService, GuildConfig guildConfig) {
         this.wowUtilsClient = wowUtilsClient;
         this.notificationService = notificationService;
+        this.guildConfig = guildConfig;
     }
 
     @Override
@@ -37,19 +40,17 @@ public class WishlistListener extends ListenerAdapter {
                         .setTitle("Report Link")
                         .setUrl(response.reportUrl());
 
-                //Clean sim validations, no warning field in the HTTP response body.
-                if (response.warnings().isEmpty()) {
-                    MessageEmbed.Field detailsField = new MessageEmbed.Field("Upload Successful:",
-                            WishlistFormatter.formatCharacterName(response.characterId()) + "\n"
-                                    + WishlistFormatter.formatImportedAt(response.importedAt()) + "\n",
-                            false
-                    );
-                    embed.addField(detailsField);
-                }
-                else {
+                MessageEmbed.Field detailsField = new MessageEmbed.Field("Upload Successful:",
+                        WishlistFormatter.formatCharacterName(response.characterId()) + "\n"
+                                + WishlistFormatter.formatImportedAt(response.importedAt()) + "\n",
+                        false
+                );
+                embed.addField(detailsField);
+
+                if (!response.warnings().isEmpty()) {
                     MessageEmbed.Field warningField = new MessageEmbed.Field(
-                            "⚠️ Your report has incorrect sim settings, please re-sim fixing the following:",
-                            WishlistFormatter.formatWarnings(response.warnings()),
+                            "⚠️ Your report has warnings, you may need to re-sim and fix the following:",
+                            WishlistFormatter.formatBulletList(response.warnings()),
                             false);
 
                     embed.addField(warningField);
@@ -69,6 +70,18 @@ public class WishlistListener extends ListenerAdapter {
                         .queue();
             }
 
+        }
+        else if (event.getName().equals("wishlist") && event.getSubcommandName().equals("validations")) {
+
+            EmbedBuilder embed = EmbedUtility.info(event.getUser(), "");
+
+            embed.addField("Current sim validations:",
+                    WishlistFormatter.formatBulletList(guildConfig.getSimValidations()),
+                    false);
+
+            event.replyEmbeds(embed.build())
+                    .setEphemeral(true)
+                    .queue();
         }
     }
 }
