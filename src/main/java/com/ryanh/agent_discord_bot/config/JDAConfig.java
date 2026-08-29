@@ -40,7 +40,8 @@ public class JDAConfig {
                         .addSubcommands(
                                 new SubcommandData("upload", "Upload a Droptimizer report")
                                         .addOption(OptionType.STRING, "reporturl",
-                                                "Paste a RaidBots droptimizer or QE Live report", true)
+                                                "Paste a RaidBots droptimizer or QE Live report", true),
+                                new SubcommandData("validations", "Print the current WoWUtils wishlist validations")
                         ),
                 Commands.slash("postout", "Post-Out commands")
                         .addSubcommands(
