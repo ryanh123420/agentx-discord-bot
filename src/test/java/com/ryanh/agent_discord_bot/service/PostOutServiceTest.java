@@ -35,7 +35,11 @@ class PostOutServiceTest {
                         ZoneId.of(guildConfig.getTimezone())).toInstant(),
                 ZoneId.of(guildConfig.getTimezone())
         );
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
+        //Real RaidCalendar, not a mock: it's a pure function of config + clock, so the
+        //view tests stay meaningful instead of asserting against a stubbed date.
+        RaidCalendar raidCalendar = new RaidCalendar(guildConfig, fixedClock);
+        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig,
+                raidCalendar, fixedClock);
     }
 
     @Test
@@ -188,147 +192,5 @@ class PostOutServiceTest {
 
         assertTrue(result.get("thisweek").isEmpty());
         assertTrue(result.get("futureweek").isEmpty());
-    }
-
-    @Test
-    void givenTuesdayBeforeRaid_whenValidMenuOptions_returnThreeMenuOptions() {
-        ZonedDateTime tuesdayAfternoon = ZonedDateTime.of(2026, 7, 14, 15, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(tuesdayAfternoon.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        List<PostOutService.RaidDay> result = postOutService.validMenuOptions();
-
-        assertEquals(3, result.size());
-    }
-
-    @Test
-    void givenTuesdayAfterRaid_whenValidMenuOptions_returnTwoMenuOptions() {
-        ZonedDateTime tuesdayAfterRaid = ZonedDateTime.of(2026, 7, 14, 22, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(tuesdayAfterRaid.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        List<PostOutService.RaidDay> result = postOutService.validMenuOptions();
-
-        assertEquals(2, result.size());
-    }
-
-    @Test
-    void givenWednesdayBeforeRaid_whenValidMenuOptions_returnTwoMenuOptions() {
-        ZonedDateTime wednesdayAfternoon = ZonedDateTime.of(2026, 7, 15, 15, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(wednesdayAfternoon.toInstant(), ZoneId.of("America/New_York"));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        List<PostOutService.RaidDay> result = postOutService.validMenuOptions();
-
-        assertEquals(2, result.size());
-    }
-
-    @Test
-    void givenWednesdayAfterRaid_whenValidMenuOptions_returnOneMenuOptions() {
-        ZonedDateTime wednesdayAfterRaid = ZonedDateTime.of(2026, 7, 15, 22, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(wednesdayAfterRaid.toInstant(), ZoneId.of("America/New_York"));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        List<PostOutService.RaidDay> result = postOutService.validMenuOptions();
-
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void givenThursdayBeforeRaid_whenValidMenuOptions_returnOneMenuOptions() {
-        ZonedDateTime thursdayBeforeRaid = ZonedDateTime.of(2026, 7, 16, 10, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(thursdayBeforeRaid.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        List<PostOutService.RaidDay> result = postOutService.validMenuOptions();
-
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void givenThursdayAfterRaid_whenValidMenuOptions_returnThreeMenuOptions() {
-        ZonedDateTime thursdayAfterRaid = ZonedDateTime.of(2026, 7, 16, 22, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(thursdayAfterRaid.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        List<PostOutService.RaidDay> result = postOutService.validMenuOptions();
-
-        assertEquals(3, result.size());
-    }
-
-    @Test
-    void givenTuesdayBeforeRaid_whenGetNextRaidWeekStartDate_returnsThisTuesday() {
-        ZonedDateTime tuesdayBeforeRaid = ZonedDateTime.of(2026, 7, 14, 15, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(tuesdayBeforeRaid.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        LocalDate expected = LocalDate.of(2026,7,14);
-        LocalDate result = postOutService.getNextRaidWeekStartDate();
-
-        assertEquals(expected,result);
-    }
-
-    @Test
-    void givenThursdayAfterRaid_whenGetNextRaidWeekStartDate_returnsNextTuesday() {
-        ZonedDateTime thursdayAfterRaid = ZonedDateTime.of(2026, 7, 16, 22, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(thursdayAfterRaid.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        LocalDate expected = LocalDate.of(2026,7,21);
-        LocalDate result = postOutService.getNextRaidWeekStartDate();
-
-        assertEquals(expected,result);
-    }
-
-    @Test
-    void givenMonday_whenGetNextRaidWeekStartDate_returnsNextTuesday() {
-        ZonedDateTime monday = ZonedDateTime.of(2026, 7, 20, 15, 0, 0, 0,
-                ZoneId.of(guildConfig.getTimezone()));
-
-        Clock fixedClock = Clock.fixed(monday.toInstant(), ZoneId.of(guildConfig.getTimezone()));
-        postOutService = new PostOutService(postOutRepository, notificationService, guildConfig, fixedClock);
-
-        LocalDate expected = LocalDate.of(2026,7,21);
-        LocalDate result = postOutService.getNextRaidWeekStartDate();
-
-        assertEquals(expected,result);
-    }
-
-    // convertDatesFromModal - valid input
-    @Test
-    void convertDatesFromModal_validInput_returnsDates() {
-        List<LocalDate> result = postOutService.convertDatesFromModal("7/14, 7/15, 7/16");
-
-        assertEquals(3, result.size());
-    }
-
-    // convertDatesFromModal - invalid input
-    @Test
-    void convertDatesFromModal_invalidInput_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> postOutService.convertDatesFromModal("abc, xyz"));
-    }
-
-    // convertDatesFromModal - empty input
-    @Test
-    void convertDatesFromModal_emptyInput_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> postOutService.convertDatesFromModal(""));
     }
 }

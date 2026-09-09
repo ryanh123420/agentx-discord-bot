@@ -2,6 +2,7 @@ package com.ryanh.agent_discord_bot.listener;
 
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.PostOutService;
+import com.ryanh.agent_discord_bot.service.RaidCalendar;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -27,11 +28,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PostOutListener extends ListenerAdapter {
 
     private final PostOutService postOutService;
+    private final RaidCalendar raidCalendar;
     private final Map<String, List<String>> daySelections = new ConcurrentHashMap<>();
     private final Map<String, List<String>> deleteSelections = new ConcurrentHashMap<>();
 
-    public PostOutListener(PostOutService postOutService) {
+    public PostOutListener(PostOutService postOutService, RaidCalendar raidCalendar) {
         this.postOutService = postOutService;
+        this.raidCalendar = raidCalendar;
     }
 
     @Override
@@ -44,12 +47,12 @@ public class PostOutListener extends ListenerAdapter {
                     .addComponents(
                             ActionRow.of(
                                     Button.primary("postout-thisreset", "Week of ("
-                                            + postOutService.getNextRaidWeekStartDate().getMonthValue() + "/"
-                                            + postOutService.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
+                                            + raidCalendar.getNextRaidWeekStartDate().getMonthValue() + "/"
+                                            + raidCalendar.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
                                     Button.primary("postout-nextreset", "Week of ("
-                                            + postOutService.getNextRaidWeekStartDate()
+                                            + raidCalendar.getNextRaidWeekStartDate()
                                             .plusWeeks(1).getMonthValue() + "/"
-                                            + postOutService.getNextRaidWeekStartDate()
+                                            + raidCalendar.getNextRaidWeekStartDate()
                                             .plusWeeks(1).getDayOfMonth() + ")"),
                                     Button.primary("postout-futurereset", "Later Week")
                             ),
@@ -157,7 +160,7 @@ public class PostOutListener extends ListenerAdapter {
             StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdays")
                     .setMinValues(1);
 
-            for (PostOutService.RaidDay day: postOutService.validMenuOptions()) {
+            for (RaidCalendar.RaidDay day: raidCalendar.validMenuOptions()) {
                 menu.addOption(day.label(), day.value(),
                         day.date().getMonth().getValue() + "/" + day.date().getDayOfMonth());
             }
@@ -179,7 +182,7 @@ public class PostOutListener extends ListenerAdapter {
             StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdays")
                     .setMinValues(1);
 
-            for (PostOutService.RaidDay day: postOutService.getNextWeekRaidDays()) {
+            for (RaidCalendar.RaidDay day: raidCalendar.getNextWeekRaidDays()) {
                 menu.addOption(day.label(), day.value(),
                         day.date().getMonth().getValue()
                                 + "/" + day.date().getDayOfMonth());
@@ -275,7 +278,7 @@ public class PostOutListener extends ListenerAdapter {
             }
 
             Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.convertDatesFromSelectMenu(confirmedDays), "");
+                    raidCalendar.convertDatesFromSelectMenu(confirmedDays), "");
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
             if (!result.get("added").isEmpty()) {
@@ -344,7 +347,7 @@ public class PostOutListener extends ListenerAdapter {
 
             try {
                 Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                        postOutService.convertDatesFromModal(dateInput), noteInput);
+                        raidCalendar.convertDatesFromModal(dateInput), noteInput);
 
                 EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
                 if (!result.get("added").isEmpty()) {
@@ -379,7 +382,7 @@ public class PostOutListener extends ListenerAdapter {
             }
 
             Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.convertDatesFromSelectMenu(confirmedDays), noteInput);
+                    raidCalendar.convertDatesFromSelectMenu(confirmedDays), noteInput);
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
             if (!result.get("added").isEmpty()) {
