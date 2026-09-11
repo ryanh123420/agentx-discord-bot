@@ -161,8 +161,8 @@ public class PostOutListener extends ListenerAdapter {
                     .setMinValues(1);
 
             for (RaidCalendar.RaidDay day: raidCalendar.validMenuOptions()) {
-                menu.addOption(day.label(), day.value(),
-                        day.date().getMonth().getValue() + "/" + day.date().getDayOfMonth());
+                menu.addOption(day.label(), day.date().toString(),
+                        PostOutFormatter.formatShortDate(day.date()));
             }
             menu.setMaxValues(menu.getOptions().size());
 
@@ -183,9 +183,8 @@ public class PostOutListener extends ListenerAdapter {
                     .setMinValues(1);
 
             for (RaidCalendar.RaidDay day: raidCalendar.getNextWeekRaidDays()) {
-                menu.addOption(day.label(), day.value(),
-                        day.date().getMonth().getValue()
-                                + "/" + day.date().getDayOfMonth());
+                menu.addOption(day.label(), day.date().toString(),
+                        PostOutFormatter.formatShortDate(day.date()));
             }
             menu.setMaxValues(menu.getOptions().size());
 
@@ -311,8 +310,13 @@ public class PostOutListener extends ListenerAdapter {
                 return;
             }
 
+            //Menu values are the database IDs this listener put there, so they parse cleanly.
+            List<Integer> deleteIds = confirmedDeleteIds.stream()
+                    .map(Integer::parseInt)
+                    .toList();
+
             Map<String, List<String>> result = postOutService.deletePostOut(event.getUser().getId(),
-                    confirmedDeleteIds);
+                    deleteIds);
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Results");
 

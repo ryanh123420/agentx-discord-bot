@@ -57,18 +57,15 @@ public class PostOutService {
         return Map.of("added", added, "duplicates", duplicates);
     }
 
-    public Map<String, List<String>> deletePostOut(String discordId, List<String> deleteList) {
-        List<PostOut> deleted = new ArrayList<>();
-
-        for (String id: deleteList) {
-            PostOut postOut = postOutRepository.findById(Integer.parseInt(id))
-                    .orElse(null);
-
-            if(postOut != null && postOut.getDiscordId().equals(discordId)) {
-                postOutRepository.delete(postOut);
-                deleted.add(postOut);
-            }
-        }
+    /**
+     * Deletes the given post outs, ignoring any that are already gone or belong to
+     * someone else. Scoping the lookup by discordId is what stops a stale menu from
+     * deleting another member's post out.
+     */
+    @Transactional
+    public Map<String, List<String>> deletePostOut(String discordId, List<Integer> deleteList) {
+        List<PostOut> deleted = postOutRepository.findAllByIdInAndDiscordId(deleteList, discordId);
+        postOutRepository.deleteAll(deleted);
 
         List<PostOut> remaining = getUsersPostOuts(discordId);
 

@@ -1,6 +1,7 @@
 package com.ryanh.agent_discord_bot.service;
 
 import com.ryanh.agent_discord_bot.config.GuildConfig;
+import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import org.springframework.stereotype.Component;
 
 import java.time.*;
@@ -8,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Raid week date math. Everything here is a pure function of the guild's raid schedule
@@ -25,7 +27,7 @@ public class RaidCalendar {
     }
 
     //Used to help build menu options in the listener
-    public record RaidDay(String label, String value, LocalDate date) {}
+    public record RaidDay(String label, LocalDate date) {}
 
     /**
      * Returns the start date of the next week, based off if the last raid day and the raid start time
@@ -92,39 +94,30 @@ public class RaidCalendar {
      */
     public List<RaidDay> validMenuOptions() {
         ZonedDateTime now = ZonedDateTime.now(clock);
-        LocalDate reset = getNextRaidWeekStartDate(now);
-        List<RaidDay> raidDaysList = new ArrayList<>();
 
-        for(int i = 0; i < guildConfig.getRaidDays().size(); i++) {
-            DayOfWeek day = guildConfig.getRaidDays().get(i);
-
-            if(isValidMenuOption(day, now)) {
-                int offset = raidWeekPosition(day) - 1;
-
-                raidDaysList.add(new RaidDay(day.name().charAt(0)
-                        + day.name().substring(1).toLowerCase(),
-                        reset.plusDays(offset).getMonthValue() + "/" + reset.plusDays(offset).getDayOfMonth(),
-                        reset.plusDays(offset)));
-            }
-        }
-        return raidDaysList;
+        return buildRaidDays(getNextRaidWeekStartDate(now), day -> isValidMenuOption(day, now));
     }
 
     public List<RaidDay> getNextWeekRaidDays() {
-        LocalDate reset = getNextRaidWeekStartDate().plusWeeks(1);
-        List<RaidDay> raidDaysList = new ArrayList<>();
+        return buildRaidDays(getNextRaidWeekStartDate().plusWeeks(1), day -> true);
+    }
 
-        for(int i = 0; i < guildConfig.getRaidDays().size(); i++) {
-            DayOfWeek day = guildConfig.getRaidDays().get(i);
-            int offset = raidWeekPosition(day) - 1;
+    /**
+     * Turns the configured raid days into dated menu options for one raid week.
+     * @param weekStart Reset date the week is anchored to
+     * @param include Which raid days to keep
+     */
+    private List<RaidDay> buildRaidDays(LocalDate weekStart, Predicate<DayOfWeek> include) {
+        List<RaidDay> raidDays = new ArrayList<>();
 
-            raidDaysList.add(new RaidDay(day.name().charAt(0)
-                    + day.name().substring(1).toLowerCase(),
-                    reset.plusDays(offset).getMonthValue() + "/" + reset.plusDays(offset).getDayOfMonth(),
-                    reset.plusDays(offset)));
+        for(DayOfWeek day: guildConfig.getRaidDays()) {
+            if(include.test(day)) {
+                LocalDate date = weekStart.plusDays(raidWeekPosition(day) - 1);
+                raidDays.add(new RaidDay(PostOutFormatter.formatDayLabel(day), date));
+            }
         }
 
-        return raidDaysList;
+        return raidDays;
     }
 
     private boolean isValidMenuOption(DayOfWeek raidDay, ZonedDateTime now) {
@@ -132,17 +125,13 @@ public class RaidCalendar {
         return isRaidWeekOver(now) || !hasStarted(raidWeekPosition(raidDay), now);
     }
 
+    /**
+     * The select menu carries ISO dates straight from RaidDay, so there is no year to guess back.
+     */
     public List<LocalDate> convertDatesFromSelectMenu(List<String> confirmedDays) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("M/d");
-        LocalDate now = LocalDate.now(clock);
-        List<LocalDate> dateList = new ArrayList<>();
-
-        for(String date: confirmedDays) {
-            LocalDate formatedDate = parseDate(date,formatter,now.getYear());
-            dateList.add(formatedDate);
-        }
-
-        return dateList;
+        return confirmedDays.stream()
+                .map(LocalDate::parse)
+                .toList();
     }
 
     public List<LocalDate> convertDatesFromModal(String datesInput) {

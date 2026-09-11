@@ -93,41 +93,43 @@ class PostOutServiceTest {
     @Test
     void givenDatesToDelete_whenDeletePostOut_returnPostOutsDeleted() {
         String discordId = "123";
-        List<String> deleteList = new ArrayList<>(List.of("1"));
+        PostOut postOut = new PostOut(discordId, LocalDate.of(2026, 7, 14),
+                LocalDateTime.of(2026, 7, 14, 0, 0, 0));
 
-        PostOut postOut = new PostOut();
-        postOut.setDiscordId(discordId);
-        postOut.setPostDate(LocalDate.of(2026,7,14));
+        when(postOutRepository.findAllByIdInAndDiscordId(List.of(1), discordId))
+                .thenReturn(List.of(postOut));
 
-        when(postOutRepository.findById(1)).thenReturn(Optional.of(postOut));
-
-        Map<String, List<String>> result = postOutService.deletePostOut(discordId, deleteList);
+        Map<String, List<String>> result = postOutService.deletePostOut(discordId, List.of(1));
 
         assertFalse(result.get("deleted").isEmpty());
-        verify(postOutRepository).delete(postOut);
+        verify(postOutRepository).deleteAll(List.of(postOut));
     }
 
     @Test
     void givenEmptyDateList_whenDeletePostOut_returnNothingDeleted() {
         String discordId = "123";
 
+        when(postOutRepository.findAllByIdInAndDiscordId(List.of(), discordId))
+                .thenReturn(List.of());
+
         Map<String, List<String>> result = postOutService.deletePostOut(discordId, List.of());
 
         assertTrue(result.get("deleted").isEmpty());
-        verify(postOutRepository, never()).delete(any());
+        verify(postOutRepository).deleteAll(List.of());
     }
 
     @Test
     void givenWrongUser_whenDeletePostOut_returnNothingDeleted() {
-        PostOut postOut = new PostOut("456", LocalDate.of(2026, 7, 14),
-                LocalDateTime.of(2026, 7, 14,0,0,0));
-        when(postOutRepository.findById(1)).thenReturn(Optional.of(postOut));
+        //Ownership is enforced by the query, so the post out of another user never
+        //comes back. Assert the caller's own id is the one scoping the lookup.
+        when(postOutRepository.findAllByIdInAndDiscordId(List.of(1), "123"))
+                .thenReturn(List.of());
 
-        //deletePostOut takes the List<String> of database IDs.
-        Map<String, List<String>> result = postOutService.deletePostOut("123", List.of("1"));
+        Map<String, List<String>> result = postOutService.deletePostOut("123", List.of(1));
 
         assertTrue(result.get("deleted").isEmpty());
-        verify(postOutRepository, never()).delete(any());
+        verify(postOutRepository).findAllByIdInAndDiscordId(List.of(1), "123");
+        verify(postOutRepository).deleteAll(List.of());
     }
 
     @Test

@@ -148,4 +148,71 @@ class RaidCalendarTest {
         //Raid week starts Tue 7/14, so Sunday is 7/19 and Monday is 7/20.
         assertEquals(LocalDate.of(2026, 7, 20), raidCalendar.getLastRaidDay());
     }
+
+    @Test
+    void givenTuesdayBeforeRaid_whenValidMenuOptions_returnsThisWeeksDates() {
+        raidCalendar = calendarAt(2026, 7, 14, 15);
+
+        List<RaidCalendar.RaidDay> result = raidCalendar.validMenuOptions();
+
+        assertEquals(List.of(LocalDate.of(2026, 7, 14), LocalDate.of(2026, 7, 15),
+                        LocalDate.of(2026, 7, 16)),
+                result.stream().map(RaidCalendar.RaidDay::date).toList());
+        assertEquals(List.of("Tuesday", "Wednesday", "Thursday"),
+                result.stream().map(RaidCalendar.RaidDay::label).toList());
+    }
+
+    @Test
+    void givenThursdayAfterRaid_whenValidMenuOptions_returnsNextWeeksDates() {
+        //The raid week has rolled over, so the menu offers next week in full.
+        raidCalendar = calendarAt(2026, 7, 16, 22);
+
+        List<LocalDate> dates = raidCalendar.validMenuOptions().stream()
+                .map(RaidCalendar.RaidDay::date)
+                .toList();
+
+        assertEquals(List.of(LocalDate.of(2026, 7, 21), LocalDate.of(2026, 7, 22),
+                LocalDate.of(2026, 7, 23)), dates);
+    }
+
+    @Test
+    void givenTuesday_whenGetNextWeekRaidDays_returnsFollowingWeeksDates() {
+        raidCalendar = calendarAt(2026, 7, 14, 15);
+
+        List<LocalDate> dates = raidCalendar.getNextWeekRaidDays().stream()
+                .map(RaidCalendar.RaidDay::date)
+                .toList();
+
+        assertEquals(List.of(LocalDate.of(2026, 7, 21), LocalDate.of(2026, 7, 22),
+                LocalDate.of(2026, 7, 23)), dates);
+    }
+
+    @Test
+    void givenMenuOptionValues_whenConvertDatesFromSelectMenu_roundTripsExactly() {
+        raidCalendar = calendarAt(2026, 7, 14, 15);
+        List<RaidCalendar.RaidDay> options = raidCalendar.validMenuOptions();
+
+        //The listener uses date.toString() as the option value, so feed that back in.
+        List<String> selected = options.stream().map(day -> day.date().toString()).toList();
+
+        assertEquals(options.stream().map(RaidCalendar.RaidDay::date).toList(),
+                raidCalendar.convertDatesFromSelectMenu(selected));
+    }
+
+    @Test
+    void givenRaidWeekCrossingNewYear_whenValidMenuOptions_keepsTheCorrectYear() {
+        //The old M/d menu value dropped the year and guessed it back. Tue 12/29/2026
+        //starts a raid week whose Thursday falls in 2027.
+        raidCalendar = calendarAt(2026, 12, 29, 15);
+
+        List<LocalDate> dates = raidCalendar.validMenuOptions().stream()
+                .map(RaidCalendar.RaidDay::date)
+                .toList();
+
+        assertEquals(List.of(LocalDate.of(2026, 12, 29), LocalDate.of(2026, 12, 30),
+                LocalDate.of(2026, 12, 31)), dates);
+
+        List<String> selected = dates.stream().map(LocalDate::toString).toList();
+        assertEquals(dates, raidCalendar.convertDatesFromSelectMenu(selected));
+    }
 }
