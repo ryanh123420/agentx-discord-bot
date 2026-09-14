@@ -288,10 +288,10 @@ public class PostOutListener extends ListenerAdapter {
         else if(event.getComponentId().equals("postout-skipnote")) {
             List<String> confirmedDays = daySelections.remove(event.getMessageId());
 
-            //Nothing left to submit, so the button was clicked twice.
+            //Create workflow timer expired or the bot restarted, so let the user know they need to restart the /postout create
             if(confirmedDays == null || confirmedDays.isEmpty()) {
                 event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
-                                "That post out was already submitted.").build())
+                                "This post out expired. Run /postout create to start again.").build())
                         .setComponents()
                         .queue();
                 return;
@@ -384,10 +384,10 @@ public class PostOutListener extends ListenerAdapter {
             String messageId = event.getMessage() == null ? "" : event.getMessage().getId();
             List<String> confirmedDays = daySelections.remove(messageId);
 
-            //Nothing left to submit, so the modal was submitted twice.
+            //Create workflow timer expired or the bot restarted, so let the user know they need to restart the /postout create
             if(confirmedDays == null || confirmedDays.isEmpty()) {
                 event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
-                                "That post out was already submitted.").build())
+                                "This post out expired. Run /postout create to start again.").build())
                         .setComponents()
                         .queue();
                 return;
