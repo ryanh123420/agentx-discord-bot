@@ -1,7 +1,10 @@
 package com.ryanh.agent_discord_bot.listener;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ryanh.agent_discord_bot.entity.PostOut;
+import com.ryanh.agent_discord_bot.service.NotificationService;
 import com.ryanh.agent_discord_bot.service.PostOutService;
+import com.ryanh.agent_discord_bot.service.RaidCalendar;
 import com.ryanh.agent_discord_bot.utility.EmbedUtility;
 import com.ryanh.agent_discord_bot.utility.PostOutFormatter;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -11,6 +14,8 @@ import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -19,19 +24,38 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class PostOutListener extends ListenerAdapter {
 
     private final PostOutService postOutService;
-    private final Map<String, List<String>> daySelections = new ConcurrentHashMap<>();
-    private final Map<String, List<String>> deleteSelections = new ConcurrentHashMap<>();
+    private final RaidCalendar raidCalendar;
+    private final NotificationService notificationService;
+    //Multi-step flow state, keyed by the ephemeral message's ID rather than the user's, so a
+    //member with two flows open can't confirm one with the other's selections.
+    private final Map<String, List<String>> daySelections = newSelectionMap();
+    private final Map<String, List<String>> deleteSelections = newSelectionMap();
 
-    public PostOutListener(PostOutService postOutService) {
+    public PostOutListener(PostOutService postOutService, RaidCalendar raidCalendar,
+                           NotificationService notificationService) {
         this.postOutService = postOutService;
+        this.raidCalendar = raidCalendar;
+        this.notificationService = notificationService;
+    }
+
+    /**
+     * A thread-safe map whose entries expire, so flows a member abandons partway through
+     * don't sit in memory until the bot restarts. The explicit type arguments on build()
+     * are needed because Java can't infer them through the builder chain.
+     */
+    private static Map<String, List<String>> newSelectionMap() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofMinutes(10))
+                .<String, List<String>>build()
+                .asMap();
     }
 
     @Override
@@ -44,12 +68,12 @@ public class PostOutListener extends ListenerAdapter {
                     .addComponents(
                             ActionRow.of(
                                     Button.primary("postout-thisreset", "Week of ("
-                                            + postOutService.getNextRaidWeekStartDate().getMonthValue() + "/"
-                                            + postOutService.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
+                                            + raidCalendar.getNextRaidWeekStartDate().getMonthValue() + "/"
+                                            + raidCalendar.getNextRaidWeekStartDate().getDayOfMonth() + ")"),
                                     Button.primary("postout-nextreset", "Week of ("
-                                            + postOutService.getNextRaidWeekStartDate()
+                                            + raidCalendar.getNextRaidWeekStartDate()
                                             .plusWeeks(1).getMonthValue() + "/"
-                                            + postOutService.getNextRaidWeekStartDate()
+                                            + raidCalendar.getNextRaidWeekStartDate()
                                             .plusWeeks(1).getDayOfMonth() + ")"),
                                     Button.primary("postout-futurereset", "Later Week")
                             ),
@@ -72,18 +96,18 @@ public class PostOutListener extends ListenerAdapter {
                         .queue();
             }
             else {
-                Map<String, List<String>> result = postOutService.viewPostOuts(event.getUser().getId());
+                PostOutService.PostOutsByWeek result = postOutService.viewPostOuts(event.getUser().getId());
 
                 EmbedBuilder embed = EmbedUtility.info(event.getUser(), "Here's a list of your post outs:");
 
-                if(!result.get("thisweek").isEmpty()) {
-                    embed.addField("🗓️ This Week:", String.join("\n", result.get("thisweek")), true);
+                if(!result.thisWeek().isEmpty()) {
+                    embed.addField("🗓️ This Week:", String.join("\n", result.thisWeek()), true);
                 }
                 else {
                     embed.addField("🗓️ This Week:", "None", true);
                 }
-                if (!result.get("futureweek").isEmpty()) {
-                    embed.addField("🗓️ Later Weeks:", String.join("\n", result.get("futureweek")), true);
+                if (!result.futureWeek().isEmpty()) {
+                    embed.addField("🗓️ Later Weeks:", String.join("\n", result.futureWeek()), true);
                 }
                 else {
                     embed.addField("🗓️ Later Weeks:", "None", true);
@@ -139,12 +163,12 @@ public class PostOutListener extends ListenerAdapter {
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         //User selected options on the day selection dropdown for "This Reset".
         if(event.getComponentId().equals("postout-selectdays")) {
-            daySelections.put(event.getUser().getId(), event.getValues());
+            daySelections.put(event.getMessageId(), event.getValues());
             event.deferEdit().queue();
         }
         //User selected options in the delete command dropdown.
         else if(event.getComponentId().equals("postout-selectdelete")) {
-            deleteSelections.put(event.getUser().getId(), event.getValues());
+            deleteSelections.put(event.getMessageId(), event.getValues());
             event.deferEdit().queue();
         }
 
@@ -157,9 +181,9 @@ public class PostOutListener extends ListenerAdapter {
             StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdays")
                     .setMinValues(1);
 
-            for (PostOutService.RaidDay day: postOutService.validMenuOptions()) {
-                menu.addOption(day.label(), day.value(),
-                        day.date().getMonth().getValue() + "/" + day.date().getDayOfMonth());
+            for (RaidCalendar.RaidDay day: raidCalendar.validMenuOptions()) {
+                menu.addOption(day.label(), day.date().toString(),
+                        PostOutFormatter.formatShortDate(day.date()));
             }
             menu.setMaxValues(menu.getOptions().size());
 
@@ -179,10 +203,9 @@ public class PostOutListener extends ListenerAdapter {
             StringSelectMenu.Builder menu = StringSelectMenu.create("postout-selectdays")
                     .setMinValues(1);
 
-            for (PostOutService.RaidDay day: postOutService.getNextWeekRaidDays()) {
-                menu.addOption(day.label(), day.value(),
-                        day.date().getMonth().getValue()
-                                + "/" + day.date().getDayOfMonth());
+            for (RaidCalendar.RaidDay day: raidCalendar.getNextWeekRaidDays()) {
+                menu.addOption(day.label(), day.date().toString(),
+                        PostOutFormatter.formatShortDate(day.date()));
             }
             menu.setMaxValues(menu.getOptions().size());
 
@@ -219,14 +242,14 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked cancel button on create command.
         else if(event.getComponentId().equals("postout-create-cancel")) {
-            daySelections.remove(event.getUser().getId());
+            daySelections.remove(event.getMessageId());
             event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
                             "Post Out canceled").build())
                     .setComponents().queue();
         }
         //User clicked confirm button on create command.
         else if(event.getComponentId().equals("postout-create-confirm")) {
-            List<String> confirmedDays = daySelections.get(event.getUser().getId());
+            List<String> confirmedDays = daySelections.get(event.getMessageId());
 
             //User tried to click "Confirm" without selecting any days.
             if (confirmedDays == null || confirmedDays.isEmpty()) {
@@ -263,42 +286,34 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked Skip Note button after confirming dates
         else if(event.getComponentId().equals("postout-skipnote")) {
-            List<String> confirmedDays = daySelections.remove(event.getUser().getId());
+            List<String> confirmedDays = daySelections.remove(event.getMessageId());
 
-            //Nothing left to submit, so the button was clicked twice.
+            //Create workflow timer expired or the bot restarted, so let the user know they need to restart the /postout create
             if(confirmedDays == null || confirmedDays.isEmpty()) {
                 event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
-                                "That post out was already submitted.").build())
+                                "This post out expired. Run /postout create to start again.").build())
                         .setComponents()
                         .queue();
                 return;
             }
 
-            Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.convertDatesFromSelectMenu(confirmedDays), "");
+            PostOutService.InsertResult result = postOutService.insertPostOut(event.getUser().getId(),
+                    raidCalendar.convertDatesFromSelectMenu(confirmedDays));
 
-            EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
-            if (!result.get("added").isEmpty()) {
-                embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
-            }
-            if (!result.get("duplicates").isEmpty()) {
-                embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
-            }
-
-            event.editMessageEmbeds(embed.build())
+            event.editMessageEmbeds(notifyAndBuildInsertEmbed(event.getUser(), result, ""))
                     .setComponents()
                     .queue();
         }
         //User clicked cancel button on the delete command.
         else if(event.getComponentId().equals("postout-delete-cancel")) {
-            deleteSelections.remove(event.getUser().getId());
+            deleteSelections.remove(event.getMessageId());
             event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
                             "❌ Delete canceled").build())
                     .setComponents().queue();
         }
         //User clicked confirm button on the delete command.
         else if(event.getComponentId().equals("postout-delete-confirm")) {
-            List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
+            List<String> confirmedDeleteIds = deleteSelections.remove(event.getMessageId());
 
             //User clicked "Confirm" without selecting any post outs, or clicked it twice.
             if(confirmedDeleteIds == null || confirmedDeleteIds.isEmpty()) {
@@ -308,25 +323,30 @@ public class PostOutListener extends ListenerAdapter {
                 return;
             }
 
-            Map<String, List<String>> result = postOutService.deletePostOut(event.getUser().getId(),
-                    confirmedDeleteIds);
+            //Menu values are the database IDs this listener put there, so they parse cleanly.
+            List<Integer> deleteIds = confirmedDeleteIds.stream()
+                    .map(Integer::parseInt)
+                    .toList();
+
+            PostOutService.DeleteResult result = postOutService.deletePostOut(event.getUser().getId(),
+                    deleteIds);
 
             EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Results");
 
             //Selected post outs can already be gone (cleanup job, stale menu), which would
             //leave this field blank and make JDA reject the embed.
-            if(result.get("deleted").isEmpty()) {
+            if(result.deleted().isEmpty()) {
                 embed.addField("🗓️ Deleted:", "None", true);
             }
             else {
-                embed.addField("🗓️ Deleted:", String.join("\n", result.get("deleted")), true);
+                embed.addField("🗓️ Deleted:", String.join("\n", result.deleted()), true);
             }
-            if(result.get("remaining").isEmpty()) {
+            if(result.remaining().isEmpty()) {
                 embed.addField("🗓️ Remaining:", "None", true);
             }
             else {
                 embed.addField("🗓️ Remaining:",
-                        String.join("\n", result.get("remaining")), true);
+                        String.join("\n", result.remaining()), true);
             }
 
             event.editMessageEmbeds(embed.build())
@@ -343,18 +363,10 @@ public class PostOutListener extends ListenerAdapter {
             String noteInput = event.getValue("noteInput").getAsString();
 
             try {
-                Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                        postOutService.convertDatesFromModal(dateInput), noteInput);
+                PostOutService.InsertResult result = postOutService.insertPostOut(event.getUser().getId(),
+                        raidCalendar.convertDatesFromModal(dateInput));
 
-                EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
-                if (!result.get("added").isEmpty()) {
-                    embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
-                }
-                if (!result.get("duplicates").isEmpty()) {
-                    embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
-                }
-
-                event.editMessageEmbeds(embed.build())
+                event.editMessageEmbeds(notifyAndBuildInsertEmbed(event.getUser(), result, noteInput))
                         .setComponents()
                         .queue();
             }
@@ -367,31 +379,46 @@ public class PostOutListener extends ListenerAdapter {
         else if (event.getModalId().equals("postout-notemodal")) {
             String noteInput = event.getValue("noteInput").getAsString();
 
-            List<String> confirmedDays = daySelections.remove(event.getUser().getId());
+            //The modal was opened from a button on the flow's message, so it carries that message.
+            //Empty string if it somehow doesn't, which finds nothing and hits the guard below.
+            String messageId = event.getMessage() == null ? "" : event.getMessage().getId();
+            List<String> confirmedDays = daySelections.remove(messageId);
 
-            //Nothing left to submit, so the modal was submitted twice.
+            //Create workflow timer expired or the bot restarted, so let the user know they need to restart the /postout create
             if(confirmedDays == null || confirmedDays.isEmpty()) {
                 event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
-                                "That post out was already submitted.").build())
+                                "This post out expired. Run /postout create to start again.").build())
                         .setComponents()
                         .queue();
                 return;
             }
 
-            Map<String, List<String>> result = postOutService.insertPostOut(event.getUser().getId(),
-                    postOutService.convertDatesFromSelectMenu(confirmedDays), noteInput);
+            PostOutService.InsertResult result = postOutService.insertPostOut(event.getUser().getId(),
+                    raidCalendar.convertDatesFromSelectMenu(confirmedDays));
 
-            EmbedBuilder embed = EmbedUtility.confirm(event.getUser(), "Post out results:");
-            if (!result.get("added").isEmpty()) {
-                embed.addField("🗓️ Added:", String.join("\n", result.get("added")), true);
-            }
-            if (!result.get("duplicates").isEmpty()) {
-                embed.addField("⚠️ Already exists:", String.join("\n", result.get("duplicates")), true);
-            }
-
-            event.editMessageEmbeds(embed.build())
+            event.editMessageEmbeds(notifyAndBuildInsertEmbed(event.getUser(), result, noteInput))
                     .setComponents()
                     .queue();
         }
+    }
+
+    /**
+     * Shared by all three create paths. Tells the post out channel about any dates that were
+     * actually added, then builds the result embed shown to the member.
+     */
+    private MessageEmbed notifyAndBuildInsertEmbed(User user, PostOutService.InsertResult result, String note) {
+        if(!result.added().isEmpty()) {
+            notificationService.sendPostOutCreation(user.getId(), result.added(), note);
+        }
+
+        EmbedBuilder embed = EmbedUtility.confirm(user, "Post out results:");
+        if (!result.added().isEmpty()) {
+            embed.addField("🗓️ Added:", String.join("\n", result.added()), true);
+        }
+        if (!result.duplicates().isEmpty()) {
+            embed.addField("⚠️ Already exists:", String.join("\n", result.duplicates()), true);
+        }
+
+        return embed.build();
     }
 }

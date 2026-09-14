@@ -31,6 +31,18 @@ class PostOutFormatterTest {
     }
 
     @Test
+    void givenUnsortedPostOuts_whenFormatSorted_thenEarliestDateFirst() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 14, 12, 0);
+        List<PostOut> postOuts = List.of(
+                new PostOut("123", LocalDate.of(2026, 7, 28), now),
+                new PostOut("123", LocalDate.of(2026, 7, 14), now));
+
+        List<String> formatted = PostOutFormatter.formatSorted(postOuts);
+
+        assertEquals(List.of("Tue 7/14/2026", "Tue 7/28/2026"), formatted);
+    }
+
+    @Test
     void givenNoPostOuts_whenFormatPostOutReport_thenReturnSingleFriendlyField() {
         List<String> fields = PostOutFormatter.formatPostOutReport(List.of());
 

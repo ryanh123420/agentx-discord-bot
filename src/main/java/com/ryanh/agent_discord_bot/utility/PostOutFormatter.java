@@ -2,11 +2,15 @@ package com.ryanh.agent_discord_bot.utility;
 
 import com.ryanh.agent_discord_bot.entity.PostOut;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class PostOutFormatter {
@@ -24,6 +28,30 @@ public class PostOutFormatter {
     public static String formatDate(LocalDate postDate) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
         return postDate.format(formatter);
+    }
+
+    /**
+     * Formats post outs for display, earliest date first.
+     */
+    public static List<String> formatSorted(List<PostOut> postOuts) {
+        return postOuts.stream()
+                .sorted(Comparator.comparing(PostOut::getPostDate))
+                .map(PostOutFormatter::formatDate)
+                .toList();
+    }
+
+    /**
+     * Short month/day for menu option descriptions, e.g. "7/14".
+     */
+    public static String formatShortDate(LocalDate date) {
+        return date.getMonthValue() + "/" + date.getDayOfMonth();
+    }
+
+    /**
+     * Day name capitalised for menu option labels, e.g. "Tuesday".
+     */
+    public static String formatDayLabel(DayOfWeek day) {
+        return day.getDisplayName(TextStyle.FULL, Locale.US);
     }
 
     /**

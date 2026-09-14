@@ -44,32 +44,35 @@ WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring
 **Key conventions:**
 - Listeners handle Discord interactions only, delegate all logic to services
 - Services never interact with JDA directly (except NotificationService for scheduled messages)
+- Notifications for user-initiated events are sent from the listener; services only send scheduled notifications
 - EmbedUtility stays generic (confirm/error/info templates only), feature-specific embed fields added in listeners or NotificationService
 - Records for API response mapping, entities for database
 - Constructor injection preferred over field injection
 - Empty string over null for optional values
 - Button/menu component IDs prefixed by feature name (e.g. postout-create-confirm)
 - Formatting utilities are static classes, not Spring beans (EmbedUtility, PostOutFormatter, WishlistFormatter)
-- Never call `ZonedDateTime.now()` directly — inject a `Clock` field and use `ZonedDateTime.now(clock)`. `PostOutService` holds a `Clock` built from `GuildConfig.getTimezone()` in its `@Autowired` constructor, plus a secondary constructor taking a `Clock` for tests
+- Never call `ZonedDateTime.now()` directly — inject the `Clock` bean and use `ZonedDateTime.now(clock)`. `TimeConfig` exposes a single `Clock` built from `GuildConfig.getTimezone()`; classes that need "now" take it as a normal constructor parameter
+- Raid week math works in 1-based raid-week positions (reset day = 1), never raw `DayOfWeek.getValue()`. Convert with `RaidCalendar.raidWeekPosition` at the boundary and get back to a date with `weekStart.plusDays(position - 1)`. Mixing the two numbering systems is what caused a real ordering bug
 
 **Testing:**
 - Unit tests with JUnit 5 and Mockito
 - Mock repositories and NotificationService, never mock the class under test
 - GuildConfig values set manually in @BeforeEach (tests don't load Spring context)
 - No @SpringBootTest — tests are pure unit tests
-- Time-dependent code is tested by constructing the service with a `Clock.fixed(...)` via its secondary constructor
+- Time-dependent code is tested by passing a `Clock.fixed(...)` to the normal constructor
+- `RaidCalendar` is a pure function of `GuildConfig` + `Clock`, so tests construct it directly rather than mocking it
 
 **Package layout** (`com.ryanh.agent_discord_bot`):
 - `listener/` — JDA `ListenerAdapter` subclasses handle slash commands, buttons, modals, select menus. Each listener is a Spring `@Component` auto-registered via `ListenerRegister`. Currently `AdminListener`, `PostOutListener`, `ThreadsListener`, `WishlistListener`.
 - `client/` — HTTP wrappers around external APIs. `WowUtilsClient` (droptimizer upload) builds its `RestClient` from an injected `RestClient.Builder` so tests can bind `MockRestServiceServer` to it.
-- `service/` — Business logic. `PostOutService` has complex date/week math around raid schedules. `NotificationService` sends embeds to officer channel.
-- `entity/` — JPA entities. `PostOut` only; unique constraint on (discordId, postDate).
-- `repository/` — Spring Data JPA interfaces. `PostOutRepository` only.
+- `service/` — Business logic. `PostOutService` handles post-out persistence and orchestration. `RaidCalendar` owns all raid week date math (week start, valid menu days, date parsing) and touches no repository. `NotificationService` sends embeds to officer channel. `ConfigService` reads/writes runtime settings with a caller-supplied default.
+- `entity/` — JPA entities. `PostOut` (unique constraint on (discordId, postDate)) and `Config` (runtime bot settings, keyed by a `ConfigKey` enum used directly as the primary key).
+- `repository/` — Spring Data JPA interfaces. `PostOutRepository`, `ConfigRepository`.
 - `exception/` — `WowUtilsException`, carrying a `ErrorCodes` enum mapped from the API's wire values via `fromWireValue`.
-- `config/` — `JDAConfig` (bot setup), `GuildConfig` (timezone, raid days/times, officer channel), `ListenerRegister` (auto-wires all listeners to JDA).
-- `model/` — Enums (`GuildRank`, `Role`) and API response records (`DroptimizerResponse`).
+- `config/` — `JDAConfig` (bot setup), `GuildConfig` (timezone, raid days/times, officer channel), `TimeConfig` (the application's `Clock` bean), `ListenerRegister` (auto-wires all listeners to JDA).
+- `model/` — Enums (`GuildRank`, `Role`, `ConfigKey`) and API response records (`DroptimizerResponse`).
 - `utility/` — `EmbedUtility` (Discord embed builders with color constants), `PostOutFormatter`, `WishlistFormatter` (format data for display).
 
-**Listener interaction flow:** Slash command → button/menu selection → optional modal → confirmation → service call → database + Discord response. `PostOutListener` uses in-memory HashMaps to track multi-step user selections.
+**Listener interaction flow:** Slash command → button/menu selection → optional modal → confirmation → service call → database + Discord response. `PostOutListener` tracks multi-step selections in Caffeine-backed maps keyed by the flow's message ID (not the user ID, so two open flows can't mix), with entries expiring 10 minutes after they are written.
 
-**Scheduled jobs:** `PostOutService` runs a noon notification on raid days (TUE/WED/THU) and a midnight cleanup of expired post-outs.
+**Scheduled jobs:** `PostOutService` sends the weekly post-out report on `guild.notification-schedule` (currently noon on Tuesday, the reset day). The method also returns early unless today is `guild.reset-day`, as a guard if the schedule is changed. A midnight job cleans up expired post-outs.
