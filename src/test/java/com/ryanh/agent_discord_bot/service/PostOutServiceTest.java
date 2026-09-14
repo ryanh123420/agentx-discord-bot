@@ -8,10 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.time.*;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -51,13 +48,13 @@ class PostOutServiceTest {
         when(postOutRepository.existsByDiscordIdAndPostDate(discordId, date))
                 .thenReturn(false);
 
-        Map<String, List<String>> result = postOutService.insertPostOut(discordId, List.of(date), "test");
+        PostOutService.InsertResult result = postOutService.insertPostOut(discordId, List.of(date));
 
-        assertFalse(result.get("added").isEmpty());
-        assertTrue(result.get("duplicates").isEmpty());
-        verify(notificationService)
-                .sendPostOutCreation(eq(discordId), any(), eq("test"));
+        assertFalse(result.added().isEmpty());
+        assertTrue(result.duplicates().isEmpty());
         verify(postOutRepository).save(any());
+        //Creation notifications are the listener's job now, so the service must not send one.
+        verifyNoInteractions(notificationService);
     }
 
     @Test
@@ -69,12 +66,10 @@ class PostOutServiceTest {
         when(postOutRepository.existsByDiscordIdAndPostDate(discordId, date))
                 .thenReturn(true);
 
-        Map<String, List<String>> result = postOutService.insertPostOut(discordId, List.of(date), "test");
+        PostOutService.InsertResult result = postOutService.insertPostOut(discordId, List.of(date));
 
-        assertTrue(result.get("added").isEmpty());
-        assertFalse(result.get("duplicates").isEmpty());
-        verify(notificationService, never())
-                .sendPostOutCreation(any(), any(), any());
+        assertTrue(result.added().isEmpty());
+        assertFalse(result.duplicates().isEmpty());
         verify(postOutRepository, never()).save(any());
     }
 
@@ -82,10 +77,10 @@ class PostOutServiceTest {
     void givenEmptyDateList_whenInsertPostOut_thenReturnNothingAdded() {
         String discordId = "123";
 
-        Map<String, List<String>> result = postOutService.insertPostOut(discordId, List.of(), "test");
+        PostOutService.InsertResult result = postOutService.insertPostOut(discordId, List.of());
 
-        assertTrue(result.get("added").isEmpty());
-        assertTrue(result.get("duplicates").isEmpty());
+        assertTrue(result.added().isEmpty());
+        assertTrue(result.duplicates().isEmpty());
 
         verify(postOutRepository, never()).save(any());
     }
@@ -99,9 +94,9 @@ class PostOutServiceTest {
         when(postOutRepository.findAllByIdInAndDiscordId(List.of(1), discordId))
                 .thenReturn(List.of(postOut));
 
-        Map<String, List<String>> result = postOutService.deletePostOut(discordId, List.of(1));
+        PostOutService.DeleteResult result = postOutService.deletePostOut(discordId, List.of(1));
 
-        assertFalse(result.get("deleted").isEmpty());
+        assertFalse(result.deleted().isEmpty());
         verify(postOutRepository).deleteAll(List.of(postOut));
     }
 
@@ -112,9 +107,9 @@ class PostOutServiceTest {
         when(postOutRepository.findAllByIdInAndDiscordId(List.of(), discordId))
                 .thenReturn(List.of());
 
-        Map<String, List<String>> result = postOutService.deletePostOut(discordId, List.of());
+        PostOutService.DeleteResult result = postOutService.deletePostOut(discordId, List.of());
 
-        assertTrue(result.get("deleted").isEmpty());
+        assertTrue(result.deleted().isEmpty());
         verify(postOutRepository).deleteAll(List.of());
     }
 
@@ -125,9 +120,9 @@ class PostOutServiceTest {
         when(postOutRepository.findAllByIdInAndDiscordId(List.of(1), "123"))
                 .thenReturn(List.of());
 
-        Map<String, List<String>> result = postOutService.deletePostOut("123", List.of(1));
+        PostOutService.DeleteResult result = postOutService.deletePostOut("123", List.of(1));
 
-        assertTrue(result.get("deleted").isEmpty());
+        assertTrue(result.deleted().isEmpty());
         verify(postOutRepository).findAllByIdInAndDiscordId(List.of(1), "123");
         verify(postOutRepository).deleteAll(List.of());
     }
@@ -140,9 +135,9 @@ class PostOutServiceTest {
 
         when(postOutRepository.findAllByDiscordId(discordId)).thenReturn(List.of(thisWeekPostOut));
 
-        Map<String, List<String>> result = postOutService.viewPostOuts(discordId);
-        assertFalse(result.get("thisweek").isEmpty());
-        assertTrue(result.get("futureweek").isEmpty());
+        PostOutService.PostOutsByWeek result = postOutService.viewPostOuts(discordId);
+        assertFalse(result.thisWeek().isEmpty());
+        assertTrue(result.futureWeek().isEmpty());
     }
 
     @Test
@@ -153,9 +148,9 @@ class PostOutServiceTest {
 
         when(postOutRepository.findAllByDiscordId(discordId)).thenReturn(List.of(futureWeekPostOUt));
 
-        Map<String, List<String>> result = postOutService.viewPostOuts(discordId);
-        assertTrue(result.get("thisweek").isEmpty());
-        assertFalse(result.get("futureweek").isEmpty());
+        PostOutService.PostOutsByWeek result = postOutService.viewPostOuts(discordId);
+        assertTrue(result.thisWeek().isEmpty());
+        assertFalse(result.futureWeek().isEmpty());
     }
 
     @Test
@@ -164,9 +159,9 @@ class PostOutServiceTest {
 
         when(postOutRepository.findAllByDiscordId(discordId)).thenReturn(List.of());
 
-        Map<String, List<String>> result = postOutService.viewPostOuts(discordId);
-        assertTrue(result.get("thisweek").isEmpty());
-        assertTrue(result.get("futureweek").isEmpty());
+        PostOutService.PostOutsByWeek result = postOutService.viewPostOuts(discordId);
+        assertTrue(result.thisWeek().isEmpty());
+        assertTrue(result.futureWeek().isEmpty());
     }
 
     @Test
@@ -179,10 +174,10 @@ class PostOutServiceTest {
         when(postOutRepository.findAllByDiscordId("123"))
                 .thenReturn(List.of(thisWeekPostOut, futureWeekPostOut));
 
-        Map<String, List<String>> result = postOutService.viewPostOuts("123");
+        PostOutService.PostOutsByWeek result = postOutService.viewPostOuts("123");
 
-        assertEquals(1, result.get("thisweek").size());
-        assertEquals(1, result.get("futureweek").size());
+        assertEquals(1, result.thisWeek().size());
+        assertEquals(1, result.futureWeek().size());
     }
 
     @Test
@@ -190,9 +185,9 @@ class PostOutServiceTest {
         when(postOutRepository.findAllByDiscordId("123"))
                 .thenReturn(List.of());
 
-        Map<String, List<String>> result = postOutService.viewPostOuts("123");
+        PostOutService.PostOutsByWeek result = postOutService.viewPostOuts("123");
 
-        assertTrue(result.get("thisweek").isEmpty());
-        assertTrue(result.get("futureweek").isEmpty());
+        assertTrue(result.thisWeek().isEmpty());
+        assertTrue(result.futureWeek().isEmpty());
     }
 }

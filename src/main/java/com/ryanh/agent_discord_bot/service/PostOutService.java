@@ -22,6 +22,10 @@ public class PostOutService {
     private final RaidCalendar raidCalendar;
     private final Clock clock;
 
+    public record InsertResult(List<String> added, List<String> duplicates) {}
+    public record DeleteResult(List<String> deleted, List<String> remaining) {}
+    public record PostOutsByWeek(List<String> thisWeek, List<String> futureWeek) {}
+
     public PostOutService(PostOutRepository postOutRepository,
                           NotificationService notificationService,
                           GuildConfig guildConfig,
@@ -34,7 +38,7 @@ public class PostOutService {
         this.clock = clock;
     }
 
-    public Map<String, List<String>> insertPostOut(String discordId, List<LocalDate> dateList, String note) {
+    public InsertResult insertPostOut(String discordId, List<LocalDate> dateList) {
         List<String> added = new ArrayList<>();
         List<String> duplicates = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now(clock);
@@ -50,11 +54,7 @@ public class PostOutService {
             }
         }
 
-        if (!added.isEmpty()) {
-            notificationService.sendPostOutCreation(discordId, added, note);
-        }
-
-        return Map.of("added", added, "duplicates", duplicates);
+        return new InsertResult(added, duplicates);
     }
 
     /**
@@ -63,21 +63,22 @@ public class PostOutService {
      * deleting another member's post out.
      */
     @Transactional
-    public Map<String, List<String>> deletePostOut(String discordId, List<Integer> deleteList) {
+    public DeleteResult deletePostOut(String discordId, List<Integer> deleteList) {
         List<PostOut> deleted = postOutRepository.findAllByIdInAndDiscordId(deleteList, discordId);
         postOutRepository.deleteAll(deleted);
 
         List<PostOut> remaining = getUsersPostOuts(discordId);
 
-        return Map.of("deleted", printListOfPostOuts(deleted), "remaining", printListOfPostOuts(remaining));
+        return new DeleteResult(printListOfPostOuts(deleted), printListOfPostOuts(remaining));
     }
 
-    public Map<String, List<String>> viewPostOuts(String discordId) {
+    public PostOutsByWeek viewPostOuts(String discordId) {
         List<String> thisWeek = new ArrayList<>();
         List<String> futureWeek = new ArrayList<>();
+        LocalDate nextWeekStart = raidCalendar.getNextRaidWeekStartDate().plusWeeks(1);
 
         for(PostOut postOut: getUsersPostOuts(discordId)) {
-            if(postOut.getPostDate().isBefore(raidCalendar.getNextRaidWeekStartDate().plusWeeks(1))) {
+            if(postOut.getPostDate().isBefore(nextWeekStart)) {
                 thisWeek.add(PostOutFormatter.formatDate(postOut));
             }
             else {
@@ -85,7 +86,7 @@ public class PostOutService {
             }
         }
 
-        return Map.of("thisweek", thisWeek, "futureweek", futureWeek);
+        return new PostOutsByWeek(thisWeek, futureWeek);
     }
 
     public List<PostOut> getUsersPostOuts(String discordId) {
