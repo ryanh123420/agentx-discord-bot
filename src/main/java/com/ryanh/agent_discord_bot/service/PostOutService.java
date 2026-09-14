@@ -69,7 +69,7 @@ public class PostOutService {
 
         List<PostOut> remaining = getUsersPostOuts(discordId);
 
-        return new DeleteResult(printListOfPostOuts(deleted), printListOfPostOuts(remaining));
+        return new DeleteResult(PostOutFormatter.formatSorted(deleted), PostOutFormatter.formatSorted(remaining));
     }
 
     public PostOutsByWeek viewPostOuts(String discordId) {
@@ -95,13 +95,6 @@ public class PostOutService {
 
     public List<PostOut> getAllPostOuts() {
         return postOutRepository.findAll();
-    }
-
-    public List<String> printListOfPostOuts(List<PostOut> postOuts) {
-        return postOuts.stream()
-                .sorted(Comparator.comparing(PostOut::getPostDate))
-                .map(PostOutFormatter::formatDate)
-                .toList();
     }
 
     /**

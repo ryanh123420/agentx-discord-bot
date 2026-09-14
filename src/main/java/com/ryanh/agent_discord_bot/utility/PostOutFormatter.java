@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +28,16 @@ public class PostOutFormatter {
     public static String formatDate(LocalDate postDate) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE M/d/yyyy");
         return postDate.format(formatter);
+    }
+
+    /**
+     * Formats post outs for display, earliest date first.
+     */
+    public static List<String> formatSorted(List<PostOut> postOuts) {
+        return postOuts.stream()
+                .sorted(Comparator.comparing(PostOut::getPostDate))
+                .map(PostOutFormatter::formatDate)
+                .toList();
     }
 
     /**
