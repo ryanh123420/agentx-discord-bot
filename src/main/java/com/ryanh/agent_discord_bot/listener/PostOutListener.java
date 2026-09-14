@@ -1,5 +1,6 @@
 package com.ryanh.agent_discord_bot.listener;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ryanh.agent_discord_bot.entity.PostOut;
 import com.ryanh.agent_discord_bot.service.NotificationService;
 import com.ryanh.agent_discord_bot.service.PostOutService;
@@ -23,9 +24,9 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class PostOutListener extends ListenerAdapter {
@@ -33,14 +34,28 @@ public class PostOutListener extends ListenerAdapter {
     private final PostOutService postOutService;
     private final RaidCalendar raidCalendar;
     private final NotificationService notificationService;
-    private final Map<String, List<String>> daySelections = new ConcurrentHashMap<>();
-    private final Map<String, List<String>> deleteSelections = new ConcurrentHashMap<>();
+    //Multi-step flow state, keyed by the ephemeral message's ID rather than the user's, so a
+    //member with two flows open can't confirm one with the other's selections.
+    private final Map<String, List<String>> daySelections = newSelectionMap();
+    private final Map<String, List<String>> deleteSelections = newSelectionMap();
 
     public PostOutListener(PostOutService postOutService, RaidCalendar raidCalendar,
                            NotificationService notificationService) {
         this.postOutService = postOutService;
         this.raidCalendar = raidCalendar;
         this.notificationService = notificationService;
+    }
+
+    /**
+     * A thread-safe map whose entries expire, so flows a member abandons partway through
+     * don't sit in memory until the bot restarts. The explicit type arguments on build()
+     * are needed because Java can't infer them through the builder chain.
+     */
+    private static Map<String, List<String>> newSelectionMap() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofMinutes(10))
+                .<String, List<String>>build()
+                .asMap();
     }
 
     @Override
@@ -148,12 +163,12 @@ public class PostOutListener extends ListenerAdapter {
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         //User selected options on the day selection dropdown for "This Reset".
         if(event.getComponentId().equals("postout-selectdays")) {
-            daySelections.put(event.getUser().getId(), event.getValues());
+            daySelections.put(event.getMessageId(), event.getValues());
             event.deferEdit().queue();
         }
         //User selected options in the delete command dropdown.
         else if(event.getComponentId().equals("postout-selectdelete")) {
-            deleteSelections.put(event.getUser().getId(), event.getValues());
+            deleteSelections.put(event.getMessageId(), event.getValues());
             event.deferEdit().queue();
         }
 
@@ -227,14 +242,14 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked cancel button on create command.
         else if(event.getComponentId().equals("postout-create-cancel")) {
-            daySelections.remove(event.getUser().getId());
+            daySelections.remove(event.getMessageId());
             event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
                             "Post Out canceled").build())
                     .setComponents().queue();
         }
         //User clicked confirm button on create command.
         else if(event.getComponentId().equals("postout-create-confirm")) {
-            List<String> confirmedDays = daySelections.get(event.getUser().getId());
+            List<String> confirmedDays = daySelections.get(event.getMessageId());
 
             //User tried to click "Confirm" without selecting any days.
             if (confirmedDays == null || confirmedDays.isEmpty()) {
@@ -271,7 +286,7 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked Skip Note button after confirming dates
         else if(event.getComponentId().equals("postout-skipnote")) {
-            List<String> confirmedDays = daySelections.remove(event.getUser().getId());
+            List<String> confirmedDays = daySelections.remove(event.getMessageId());
 
             //Nothing left to submit, so the button was clicked twice.
             if(confirmedDays == null || confirmedDays.isEmpty()) {
@@ -291,14 +306,14 @@ public class PostOutListener extends ListenerAdapter {
         }
         //User clicked cancel button on the delete command.
         else if(event.getComponentId().equals("postout-delete-cancel")) {
-            deleteSelections.remove(event.getUser().getId());
+            deleteSelections.remove(event.getMessageId());
             event.editMessageEmbeds(EmbedUtility.error(event.getUser(),
                             "❌ Delete canceled").build())
                     .setComponents().queue();
         }
         //User clicked confirm button on the delete command.
         else if(event.getComponentId().equals("postout-delete-confirm")) {
-            List<String> confirmedDeleteIds = deleteSelections.remove(event.getUser().getId());
+            List<String> confirmedDeleteIds = deleteSelections.remove(event.getMessageId());
 
             //User clicked "Confirm" without selecting any post outs, or clicked it twice.
             if(confirmedDeleteIds == null || confirmedDeleteIds.isEmpty()) {
@@ -364,7 +379,10 @@ public class PostOutListener extends ListenerAdapter {
         else if (event.getModalId().equals("postout-notemodal")) {
             String noteInput = event.getValue("noteInput").getAsString();
 
-            List<String> confirmedDays = daySelections.remove(event.getUser().getId());
+            //The modal was opened from a button on the flow's message, so it carries that message.
+            //Empty string if it somehow doesn't, which finds nothing and hits the guard below.
+            String messageId = event.getMessage() == null ? "" : event.getMessage().getId();
+            List<String> confirmedDays = daySelections.remove(messageId);
 
             //Nothing left to submit, so the modal was submitted twice.
             if(confirmedDays == null || confirmedDays.isEmpty()) {
