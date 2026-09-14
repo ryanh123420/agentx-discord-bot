@@ -44,6 +44,7 @@ WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring
 **Key conventions:**
 - Listeners handle Discord interactions only, delegate all logic to services
 - Services never interact with JDA directly (except NotificationService for scheduled messages)
+- Notifications for user-initiated events are sent from the listener; services only send scheduled notifications
 - EmbedUtility stays generic (confirm/error/info templates only), feature-specific embed fields added in listeners or NotificationService
 - Records for API response mapping, entities for database
 - Constructor injection preferred over field injection
@@ -72,6 +73,6 @@ WoW guild management Discord bot using **JDA 6.4.1** (Java Discord API) + Spring
 - `model/` — Enums (`GuildRank`, `Role`, `ConfigKey`) and API response records (`DroptimizerResponse`).
 - `utility/` — `EmbedUtility` (Discord embed builders with color constants), `PostOutFormatter`, `WishlistFormatter` (format data for display).
 
-**Listener interaction flow:** Slash command → button/menu selection → optional modal → confirmation → service call → database + Discord response. `PostOutListener` uses in-memory HashMaps to track multi-step user selections.
+**Listener interaction flow:** Slash command → button/menu selection → optional modal → confirmation → service call → database + Discord response. `PostOutListener` tracks multi-step selections in Caffeine-backed maps keyed by the flow's message ID (not the user ID, so two open flows can't mix), with entries expiring 10 minutes after they are written.
 
-**Scheduled jobs:** `PostOutService` runs a notification on the weekly reset day (the cron fires on raid days but the method returns early unless today is `guild.reset-day`) and a midnight cleanup of expired post-outs.
+**Scheduled jobs:** `PostOutService` sends the weekly post-out report on `guild.notification-schedule` (currently noon on Tuesday, the reset day). The method also returns early unless today is `guild.reset-day`, as a guard if the schedule is changed. A midnight job cleans up expired post-outs.

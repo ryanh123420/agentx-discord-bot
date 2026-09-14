@@ -98,7 +98,8 @@ public class PostOutService {
     }
 
     /**
-     * Sends all post outs for the current and next raid reset.
+     * Sends all post outs for the current and next raid reset. The schedule is expected to fire
+     * on reset day; the day check guards against a schedule that is changed to fire on other days.
      */
     @Scheduled(cron = "${guild.notification-schedule}", zone = "${guild.timezone}")
     public void postOutReminder() {
@@ -107,10 +108,10 @@ public class PostOutService {
             return;
         }
 
-        List<PostOut> postOutListThisWeek = postOutRepository.findByPostDateBetween(now,
-                raidCalendar.getLastRaidDay());
+        LocalDate lastRaidDay = raidCalendar.getLastRaidDay();
+        List<PostOut> postOutListThisWeek = postOutRepository.findByPostDateBetween(now, lastRaidDay);
         List<PostOut> postOutListNextWeek = postOutRepository.findByPostDateBetween(now.plusWeeks(1),
-                raidCalendar.getLastRaidDay().plusWeeks(1));
+                lastRaidDay.plusWeeks(1));
 
         notificationService.sendPostOutReport(postOutListThisWeek, postOutListNextWeek);
     }
